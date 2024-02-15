@@ -1,0 +1,17 @@
+local ArrayField = loadstring(game:HttpGet("https://raw.githubusercontent.com/Hosvile/Refinement/main/MC%3AArrayfield%20Library"))()
+--Documentation url: https://docs.sirius.menu/community/arrayfield
+
+local Window = ArrayField:CreateWindow({
+    Tab:CreateSpacing(nil,10)
+    local Slider = Tab:CreateSlider({
+        Name = "Slider Example",
+        Range = {0, 100},
+        Increment = 10,
+        Suffix = "Bananas",
+        CurrentValue = 10,
+        Flag = "Slider1",
+        Callback = function(Value)
+            print(Value)
+        end,
+    })
+      
