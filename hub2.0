@@ -21,12 +21,12 @@ local Window = Rayfield:CreateWindow({
        FileName = "ShizukiiKey",
        SaveKey = true,
        GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-       Key = "BetaV2"
+       Key = "V2hub"
     }
  })
   Rayfield:Notify({
    Title = "Bem-vindo ao Shizukii Hub v2",
-   Content = "Much Love ❤. - Ry. Aloha Konichiwa",
+   Content = "Much Love ❤. - Chead.y + cherry",
    Duration = 6.5,
    Image = 4483362458,
    Actions = { -- Notification Buttons
@@ -40,7 +40,7 @@ local Window = Rayfield:CreateWindow({
 })
  Rayfield:Notify({
 	Title = "Notification",
-	Content = "Hey! Thanks for choosing Raccoon Hub, i put lots of efforts in this. Enjoy!",
+	Content = "Hey! Thanks for choosing Shizukii Hub, i put lots of efforts in this. Enjoy!",
 	Duration = 6.5,
 	Image = 4483362458,
 	Actions = { -- Notification Buttons
@@ -95,56 +95,11 @@ local Button = ExpTab:CreateButton({
     end,
  })
 
-local Paragraph = CreditTab:CreateParagraph({Title = "Rayfield", Content = "By Shlexware"})
-local Paragraph = CreditTab:CreateParagraph({Title = "Original Atlas Hub", Content = "Based on Goobie / The Pepsi Hub"})
-local Paragraph = CreditTab:CreateParagraph({Title = "Resync Fling, Aimbot, ESP", Content = "By Sploinky a developer of Pepsi Hub"})
-local Paragraph = CreditTab:CreateParagraph({Title = "Raccoon Hub", Content = "By Ry"})
-local Paragraph = CreditTab:CreateParagraph({Title = "[OLD | OG] Atlas Hub and Rayfield Atlas Hub", Content = "By Ry"})
-local Paragraph = CreditTab:CreateParagraph({Title = "Atlas X", Content = "By Wello"})
+local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
+local Paragraph = CreditTab:CreateParagraph({Title = "Resync Fling, Aimbot, ESP", Content = "By crypzz a developer"})
+local Paragraph = CreditTab:CreateParagraph({Title = "Shizukii Hub", Content = "By Ry"})
 
 local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these links in you browser", Content = "Follow us on Github or join our server will helps alot!"})
-
- local Button = SupportTab:CreateButton({
-	Name = "♥ Join our server!",
-	Callback = function()
- Rayfield:Notify({
-   Title = "Notify",
-   Content = "The link has been copied to you clipboard!",
-   Duration = 6.5,
-   Image = 4483362458,
-   Actions = { -- Notification Buttons
-      Ignore = {
-         Name = "Okay!",
-         Callback = function()
-         print("The user tapped Okay!")
-      end
-   },
-},
-})
-		setclipboard("https://dsc.gg/yuaN9bG8Mm")
-    end,
- })
-
- local Button = SupportTab:CreateButton({
-	Name = "💖 Our GitHub",
-	Callback = function()
- Rayfield:Notify({
-   Title = "Notify",
-   Content = "The link has been copied to you clipboard!",
-   Duration = 6.5,
-   Image = 4483362458,
-   Actions = { -- Notification Buttons
-      Ignore = {
-         Name = "Okay!",
-         Callback = function()
-         print("wello x Terio")
-      end
-   },
-},
-})
-		setclipboard("https://github.com/chead-z")
-    end,
- })
 
  local Button = SupportTab:CreateButton({
 	Name = "🖤 Chead.y Dev Github",
@@ -193,15 +148,11 @@ local Paragraph = CreditTab:CreateParagraph({Title = "ㅤㅤㅤㅤㅤㅤㅤㅤ",
  
 local Paragraph = CreditTab:CreateParagraph({Title = "Special Thanks to:", Content = "ㅤ"})
 
-local Paragraph = CreditTab:CreateParagraph({Title = "Wello", Content = "Testing script!"})
+local Paragraph = CreditTab:CreateParagraph({Title = "Cherry", Content = "Testing script!"})
 
-local Paragraph = CreditTab:CreateParagraph({Title = "Gooble", Content = "For inspiring!"})
+local Paragraph = CreditTab:CreateParagraph({Title = "Crypzz", Content = "For inspiring!"})
 
-local Paragraph = CreditTab:CreateParagraph({Title = "Suno", Content = "Supporting!"})
-
-local Paragraph = CreditTab:CreateParagraph({Title = "And others", Content = "kking, Louismoonj, ScripterCat for Cheering me!"})
-
-local Paragraph = RandomTab:CreateParagraph({Title = "Warning!", Content = "Some of these scripts may get you banned! especially Arsenal."})
+local Paragraph = CreditTab:CreateParagraph({Title = "Baka", Content = "Supporting!"})
  
  local Button = RandomTab:CreateButton({
 	Name = " Rainbow Bubble Chat | Doesn't work with new chat system",
