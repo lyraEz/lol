@@ -16,7 +16,7 @@ local Window = Rayfield:CreateWindow({
  })
   Rayfield:Notify({
    Title = "Bem-vindo ao Shizukii Hub v2",
-   Content = "Much Love . - Chead.y + cherry",
+   Content = "Much Love ❤️. - Chead.y + cherry",
    Duration = 6.5,
    Image = 4483362458,
    Actions = { -- Notification Buttons
@@ -86,7 +86,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By ch
 local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these links in you browser", Content = "Follow us on Github or join our server will helps alot!"})
 
  local Button = SupportTab:CreateButton({
-	Name = " Chead.y Dev Github",
+	Name = "🖤 Chead.y Dev Github",
 	Callback = function()
  Rayfield:Notify({
    Title = "Notify",
@@ -108,7 +108,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
 
 
  local Button = SupportTab:CreateButton({
-	Name = " Shizukii Discord Server",
+	Name = "✔️ Shizukii Discord Server",
 	Callback = function()
  Rayfield:Notify({
    Title = "Notify",
