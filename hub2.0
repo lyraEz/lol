@@ -1,31 +1,31 @@
 local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
 local Window = Rayfield:CreateWindow({
-    Name = "Raccoon Hub v1.2.2 ",
-    LoadingTitle = "Raccoon Hub v1.2.2 is loading..",
-    LoadingSubtitle = "By Ry and you! ",
+    Name = "Shizukii Hub V2 ",
+    LoadingTitle = "Shizukii Hub V2  is loading..",
+    LoadingSubtitle = "By chead.y and you! ",
     ConfigurationSaving = {
        Enabled = false,
        FolderName = nil, -- Create a custom folder for your hub/game
-       FileName = "Raccoon Hub"
+       FileName = "Shizukii Hub"
     },
     Discord = {
        Enabled = true,
-       Invite = "tzAsunjkXy",
+       Invite = "yuaN9bG8Mm",
        RememberJoins = true -- Set this to false to make them join the discord every time they load it up
     },
     KeySystem = true, -- Set this to true to use our key system
     KeySettings = {
-       Title = "Raccoon Hub v1.2.2 ",
+       Title = "Shizukii Hub V2 ",
        Subtitle = "Key System",
-       Note = "Join the discord (dsc.gg/rans) for the key.",
-       FileName = "atlaskey",
+       Note = "Join the discord (dsc.gg/yuaN9bG8Mm) for the key.",
+       FileName = "ShizukiiKey",
        SaveKey = true,
        GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-       Key = "SPartner"
+       Key = "V2hub"
     }
  })
   Rayfield:Notify({
-   Title = "Welcome to Raccoon Hub v1.2.2!",
+   Title = "Bem-vindo ao Shizukii Hub v2",
    Content = "Much Love ❤. - Ry. Aloha Konichiwa",
    Duration = 6.5,
    Image = 4483362458,
@@ -121,7 +121,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
    },
 },
 })
-		setclipboard("https://dsc.gg/rans")
+		setclipboard("https://dsc.gg/yuaN9bG8Mm")
     end,
  })
 
@@ -142,12 +142,12 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
    },
 },
 })
-		setclipboard("https://github.com/RyAtlasX")
+		setclipboard("https://github.com/chead-z")
     end,
  })
 
  local Button = SupportTab:CreateButton({
-	Name = "🖤 Atlas Dev Github",
+	Name = "🖤 Chead.y Dev Github",
 	Callback = function()
  Rayfield:Notify({
    Title = "Notify",
@@ -163,12 +163,13 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
    },
 },
 })
-		setclipboard("https://github.com/atlas-developers")
+		setclipboard("https://github.com/chead.y")
     end,
  })
 
+
  local Button = SupportTab:CreateButton({
-	Name = "🌐 Atlas v5 website",
+	Name = "✔ Shizukii Discord Server",
 	Callback = function()
  Rayfield:Notify({
    Title = "Notify",
@@ -184,29 +185,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
    },
 },
 })
-		setclipboard("https://atlasv5.vercel.app/")
-    end,
- })
-
-
- local Button = SupportTab:CreateButton({
-	Name = "✔ Atlas Discord Server",
-	Callback = function()
- Rayfield:Notify({
-   Title = "Notify",
-   Content = "The link has been copied to you clipboard!",
-   Duration = 6.5,
-   Image = 4483362458,
-   Actions = { -- Notification Buttons
-      Ignore = {
-         Name = "Okay!",
-         Callback = function()
-         print("Ry x Kee")
-      end
-   },
-},
-})
-		setclipboard("https://discord.gg/RKEVNpBbHz")
+		setclipboard("https://discord.gg/yuaN9bG8Mm")
     end,
  })
 
