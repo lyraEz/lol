@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
 local Window = Rayfield:CreateWindow({
-    Name = "Shizukii Hub V2 ",
-    LoadingTitle = "Shizukii Hub V2  is loading..",
-    LoadingSubtitle = "By chead.y and you! ",
+    Name = "Shizukii Hub V2 ",
+    LoadingTitle = "Shizukii Hub V2  is loading..",
+    LoadingSubtitle = "By chead.y and you! ",
     ConfigurationSaving = {
        Enabled = false,
        FolderName = nil, -- Create a custom folder for your hub/game
@@ -61,12 +61,12 @@ local Window = Rayfield:CreateWindow({
 warn("Please Support me i put alot of efforts in this.")
 warn("<3")
 
-  local RandomTab = Window:CreateTab("Main Scripts ", 4483362458) 
-   local HubsTab = Window:CreateTab("2nd Scripts Tab", 4483362458) 
- local ExpTab = Window:CreateTab(" Experimental") 
- local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
- local CreditTab = Window:CreateTab("Credits", 4483362458)
- local ChangeTab = Window:CreateTab("Changelogs", 4483362458) 
+  local RandomTab = Window:CreateTab("Main Scripts 📜", 4483362458) 
+   local HubsTab = Window:CreateTab("2nd Scripts Tab📜", 4483362458) 
+ local ExpTab = Window:CreateTab(" Experimental") 
+ local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
+ local CreditTab = Window:CreateTab("Credits", 4483362458)
+ local ChangeTab = Window:CreateTab("Changelogs", 4483362458) 
 
 
 local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "These are Experimental feature. it may crashes your game."})
@@ -75,7 +75,7 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note:", Content = "' = mi
 
 
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot v6 |pc| '",
+	Name = " Shizukii Aimbot v6 |pc| '",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/iK4oS/backdoor.exe/master/source.lua"))()
     end,
@@ -119,7 +119,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
       Ignore = {
          Name = "Okay!",
          Callback = function()
-         print("Ry x Kee")
+         print("chead e Shxi")
       end
    },
 },
@@ -128,7 +128,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
     end,
  })
 
-local Paragraph = CreditTab:CreateParagraph({Title = "Special Thanks to:", Content = ""})
+local Paragraph = CreditTab:CreateParagraph({Title = "Special Thanks to:", Content = ""})
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Cherry", Content = "Testing script!"})
 
@@ -136,27 +136,27 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
  
 
  local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub",
+	Name = " Symphony Hub",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/Shizukii/main/Hub.lua", true))()
     end,
  })
  local Button = HubsTab:CreateButton({
-	Name = " Eclipse Hub (apenas fluxus)",
+	Name = " Eclipse Hub (apenas fluxus)",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/Ethanoj1/EclipseMM2/master/Script", true))()
     end,
  })
   
      local Button = HubsTab:CreateButton({
-    Name = " Bedol Hub",
+    Name = " Bedol Hub",
     Callback = function()
     loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
     end,
  })
  
      local Button = HubsTab:CreateButton({
-    Name = " Ice Hub",
+    Name = " Ice Hub",
     Callback = function()
     loadstring(game:HttpGet"https://raw.githubusercontent.com/IceMael7/NewIceHub/main/Brookhaven")() -- The function that takes place when the button is pressed
     end,
@@ -164,87 +164,87 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
 
 
  local Button = RandomTab:CreateButton({
-	Name = " Redz Hub | blox fruits ",
+	Name = " Redz Hub | blox fruits ",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Luarmor Hub",
+	Name = " Luarmor Hub",
 	Callback = function()
 		loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/3b2169cf53bc6104dabe8e19562e5cc2.lua"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Miojo Hub | Blox fruits (key)",
+	Name = " Miojo Hub | Blox fruits (key)",
 	Callback = function()
 		loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/sumidassz/miojoHub/main/hub.lua", true))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Vecto Hub | Blox fruits (key)",
+	Name = " Vecto Hub | Blox fruits (key)",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/AAwful/VectorHub/main/Loader.lua"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Ry's Evade Gui",
+	Name = " Ry's Evade Gui",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/Evade%20Gui.lua"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Ry's PSX Gui",
+	Name = " Ry's PSX Gui",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/PSX%20SCRIPT.lua"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Legends of Speed | Auto Orbs",
+	Name = " Legends of Speed | Auto Orbs",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/2008.lua"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Break In Story | OP",
+	Name = " Break In Story | OP",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/Break%20In%20Story.lua"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Muscle Legends | V.G",
+	Name = " Muscle Legends | V.G",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Atlas_hub/main/Muscle-Legends.txt"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " VAPE v4 | Bedwars",
+	Name = " VAPE v4 | Bedwars",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/VAPE%20V4%20%5Bbedwar%5D"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Arsenal Scripts | 2 Hubs included",
+	Name = " Arsenal Scripts | 2 Hubs included",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/test/main/Arsenal%20scripts1"))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Vynixu Scripts | Doors",
+	Name = " Vynixu Scripts | Doors",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/test/main/Doors2"))()
     end,
  })
  
  local Button = HubsTab:CreateButton({
-	Name = " Owl Hub",
+	Name = " Owl Hub",
 	Callback = function(exec)
 		loadstring(game:HttpGet("https://github.com/RyAtlasX/Atlas_hub/blob/main/Owl%20hub"))()
     end,
  })
 
  local Button = HubsTab:CreateButton({
-	Name = " Ez Hub",
+	Name = " Ez Hub",
 	Callback = function()
 		loadstring(game:HttpGet("https://cdn.wearedevs.net/scripts/Ez%20Hub.txt"))()
     end,
@@ -252,11 +252,11 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
   
 
 
-local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Shizukii Hub is here!"})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Atlas Hub is here!"})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more FE scripts."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.3", Content = "Added more tips in Controls page, Nullware Reanimation is fixed, And more..."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.4.8", Content = "Added Infamy script, Legend of speed back to the Atlas hub, moved Solar to Utilites selection."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.5", Content = "Added Symphony Hub and Redz Hub."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.4.4", Content = "Added Infamy script, Legend of speed back to the Atlas hub, moved Solar to Utilites selection."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.5", Content = "Added auto player piano."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.6", Content = "Added Energize Animation Gui."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.7.2", Content = "Added Owlhub, Ez hub, Muscle Legends script."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.8", Content = "Added Support Tab, Credits Tab."})
