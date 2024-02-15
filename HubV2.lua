@@ -80,6 +80,12 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note:", Content = "' = mi
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/iK4oS/backdoor.exe/master/source.lua"))()
     end,
  })
+ local Button = ExpTab:CreateButton({
+	Name = " Shizukii Aimbot v1 |Mobile| '",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/circle/main/aimbot.lua"))()
+    end,
+ })
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
 
