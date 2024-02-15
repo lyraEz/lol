@@ -5,7 +5,7 @@ local Window = Rayfield:CreateWindow({
     LoadingSubtitle = "By chead.y and you! ",
     ConfigurationSaving = {
        Enabled = false,
-       FolderName = nil, -- Create a custom folder for your hub/game
+       FolderName = Shizukii, -- Create a custom folder for your hub/game
        FileName = "Shizukii Hub"
     },
     Discord = {
@@ -63,7 +63,7 @@ warn("<3")
 
   local RandomTab = Window:CreateTab("Main Scripts 📜", 4483362458) 
    local HubsTab = Window:CreateTab("2nd Scripts Tab📜", 4483362458) 
- local ExpTab = Window:CreateTab(" Experimental") 
+ local ExpTab = Window:CreateTab("Experimental ") 
  local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
  local CreditTab = Window:CreateTab("Credits", 4483362458)
  local ChangeTab = Window:CreateTab("Changelogs", 4483362458) 
@@ -224,7 +224,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Arsenal Scripts | 2 Hubs included",
+	Name = " Arsenal Scripts | 2 Hubs included",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/test/main/Arsenal%20scripts1"))()
     end,
