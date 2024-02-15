@@ -258,14 +258,14 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
   
 
 
-local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Atlas Hub is here!"})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Shizukii Hub is here!"})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more FE scripts."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.3", Content = "Added more tips in Controls page, Nullware Reanimation is fixed, And more..."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.4.4", Content = "Added Infamy script, Legend of speed back to the Atlas hub, moved Solar to Utilites selection."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.5", Content = "Added auto player piano."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.3", Content = "Added more scripts and animation is fixed, And more..."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.4.4", Content = "Added Infamy script, Legend of speed back to the Shizukii hub, moved Solar to Utilites selection."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.5", Content = "Added Symphony and Eclipse Hub."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.6", Content = "Added Energize Animation Gui."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.7.2", Content = "Added Owlhub, Ez hub, Muscle Legends script."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.8", Content = "Added Support Tab, Credits Tab."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Demo v1.9", Content = "Changed somethings in 'Support Us!' tab"})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.9", Content = "Added Experiment Tab."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.9.2", Content = "Added Experiment Tab."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v2", Content = "Huge Update! Renamed 'Random Scripts' to '2nd Scripts Tab'. added much new scripts! and more decorations! Made the buttons more specific! And More!!!."})
