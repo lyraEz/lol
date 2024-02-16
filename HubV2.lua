@@ -194,6 +194,12 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
     end,
  })
  local Button = RandomTab:CreateButton({
+	Name = " Yutv Hub (key)",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/AAwful/VectorHub/main/Loader.lua"))()
+    end,
+ })
+ local Button = RandomTab:CreateButton({
 	Name = " Ry's Evade Gui",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/Evade%20Gui.lua"))()
@@ -244,7 +250,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
  
  local Button = HubsTab:CreateButton({
 	Name = " Owl Hub",
-	Callback = function(exec)
+	Callback = function()
 		loadstring(game:HttpGet("https://github.com/RyAtlasX/Atlas_hub/blob/main/Owl%20hub"))()
     end,
  })
