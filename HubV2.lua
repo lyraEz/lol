@@ -142,7 +142,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
  
 
  local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub",
+	Name = " Symphony Hub |Blade bal/MM2",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/Shizukii/main/Hub.lua", true))()
     end,
@@ -162,9 +162,9 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
  })
  
      local Button = HubsTab:CreateButton({
-    Name = " Ice Hub",
+    Name = " Dark Cheat | MM2",
     Callback = function()
-    loadstring(game:HttpGet"https://raw.githubusercontent.com/IceMael7/NewIceHub/main/Brookhaven")() -- The function that takes place when the button is pressed
+loadstring(game:HttpGet("https://pastebin.com/raw/ECCeYtXA"))(( -- The function that takes place when the button is pressed
     end,
  })
 
