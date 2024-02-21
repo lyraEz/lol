@@ -160,11 +160,10 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
     loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
     end,
  })
- 
      local Button = HubsTab:CreateButton({
     Name = " Dark Cheat | MM2",
     Callback = function()
-loadstring(game:HttpGet("https://pastebin.com/raw/ECCeYtXA"))(( -- The function that takes place when the button is pressed
+    loadstring(game:HttpGet("https://pastebin.com/raw/ECCeYtXA"))() -- The function that takes place when the button is pressed
     end,
  })
 
