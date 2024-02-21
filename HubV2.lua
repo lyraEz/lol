@@ -249,9 +249,9 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
  })
  
  local Button = HubsTab:CreateButton({
-	Name = " Owl Hub",
+	Name = " Tela Esticada",
 	Callback = function()
-		loadstring(game:HttpGet("https://github.com/RyAtlasX/Atlas_hub/blob/main/Owl%20hub"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/ySixxNz/SIXHUB-UNIVERSAL/SixHub-Universal/SixHub-Universal"))()
     end,
  })
 
