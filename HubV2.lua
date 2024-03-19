@@ -169,7 +169,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
 local Button = HubsTab:CreateButton({
 	Name = " Da HooD Hub's",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/svan1lol/svanhub/main/svanhubdahood.lua", true))())
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/svan1lol/svanhub/main/svanhubdahood.lua", true))()
     end,
  })
 
