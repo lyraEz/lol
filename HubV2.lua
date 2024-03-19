@@ -142,9 +142,9 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
  
 
  local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub |Blade bal/MM2",
+	Name = " R3THPRIV Hub | MM2",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/Shizukii/main/Hub.lua", true))()
+		loadstring(game:HttpGet('https://raw.githubusercontent.com/R3TH-PRIV/R3THPRIV/main/loader.lua'))())
     end,
  })
  local Button = HubsTab:CreateButton({
@@ -166,6 +166,13 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
     loadstring(game:HttpGet("https://pastebin.com/raw/ECCeYtXA"))() -- The function that takes place when the button is pressed
     end,
  })
+local Button = HubsTab:CreateButton({
+	Name = " Da HooD Hub's",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/svan1lol/svanhub/main/svanhubdahood.lua", true))())
+    end,
+ })
+
 
 
  local Button = RandomTab:CreateButton({
@@ -235,7 +242,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Arsenal Scripts | 2 Hubs included",
+	Name = " Arsenal Scripts | 2 Hubs included",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/test/main/Arsenal%20scripts1"))()
     end,
