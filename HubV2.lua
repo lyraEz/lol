@@ -144,11 +144,11 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
  local Button = HubsTab:CreateButton({
 	Name = " R3THPRIV Hub | MM2",
 	Callback = function()
-		loadstring(game:HttpGet('https://raw.githubusercontent.com/R3TH-PRIV/R3THPRIV/main/loader.lua'))())
+		loadstring(game:HttpGet('https://raw.githubusercontent.com/R3TH-PRIV/R3THPRIV/main/loader.lua'))()
     end,
  })
  local Button = HubsTab:CreateButton({
-	Name = " Eclipse Hub (apenas fluxus)",
+	Name = " Eclipse Hub (only fluxus)",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/Ethanoj1/EclipseMM2/master/Script", true))()
     end,
