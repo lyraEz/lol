@@ -188,13 +188,13 @@ local Button = HubsTab:CreateButton({
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Miojo Hub | Blox fruits (key)",
+	Name = " Miojo Hub (key)",
 	Callback = function()
 		loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/sumidassz/miojoHub/main/hub.lua", true))()
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Vecto Hub | Blox fruits (key)",
+	Name = " Vecto Hub (key)",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/AAwful/VectorHub/main/Loader.lua"))()
     end,
