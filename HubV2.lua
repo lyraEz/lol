@@ -139,6 +139,8 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Special Thanks to:", Conte
 local Paragraph = CreditTab:CreateParagraph({Title = "Cherry", Content = "Testing script!"})
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Supporting!"})
+
+local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release part py"})
  
 
  local Button = HubsTab:CreateButton({
