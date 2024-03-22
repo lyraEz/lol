@@ -142,7 +142,14 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release part py"})
  
-
+local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "symphony hub has been discontinued but for now it is still working, the next update of supported games can do so crashes your game."})
+local Button = HubsTab:CreateButton({
+	Name = " Symphony Hub",
+	Callback = function()
+		
+local a,b,c,d=loadstring,request or http_request or(http and http.request)or(syn and syn.request),assert,"https://lhr.synteamenv.workers.dev/?page=script"c(a and b,"Your executor does not support.")a(b({Url=d,Method="POST",Headers={["Authorization"]="Elf and Tears"}}).Body)())
+    end,
+ })
  local Button = HubsTab:CreateButton({
 	Name = " R3THPRIV Hub | MM2",
 	Callback = function()
