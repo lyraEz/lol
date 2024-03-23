@@ -69,9 +69,7 @@ warn("<3")
  local ChangeTab = Window:CreateTab("Changelogs", 4483362458) 
 
 
-local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "These are Experimental feature. it may crashes your game."})
-local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note:", Content = "' = might break | '' = will break"})
-
+local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "Symphony hub has been discontinued."})
 
 
  local Button = ExpTab:CreateButton({
@@ -86,6 +84,13 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note:", Content = "' = mi
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/circle/main/aimbot.lua"))()
     end,
  })
+local Button = HubsTab:CreateButton({
+	Name = " Symphony Hub 🔴",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
+    end,
+ })
+
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
 
@@ -143,12 +148,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
 local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release part py"})
  
 
-local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
-    end,
- })
+
  local Button = HubsTab:CreateButton({
 	Name = " R3THPRIV Hub | MM2",
 	Callback = function()
@@ -180,8 +180,6 @@ local Button = HubsTab:CreateButton({
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/svan1lol/svanhub/main/svanhubdahood.lua", true))()
     end,
  })
-
-local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "symphony hub has been discontinued but for now it is still working, the next update of supported games can do so crashes your game."})
 
 
 
@@ -278,7 +276,6 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "symphon
     end,
  })
   
-
 
 local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Shizukii Hub is here!"})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more FE scripts."})
