@@ -146,8 +146,7 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "symphon
 local Button = HubsTab:CreateButton({
 	Name = " Symphony Hub",
 	Callback = function()
-		
-local a,b,c,d=loadstring,request or http_request or(http and http.request)or(syn and syn.request),assert,"https://lhr.synteamenv.workers.dev/?page=script"c(a and b,"Your executor does not support.")a(b({Url=d,Method="POST",Headers={["Authorization"]="Elf and Tears"}}).Body)())
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
     end,
  })
  local Button = HubsTab:CreateButton({
