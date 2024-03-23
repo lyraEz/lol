@@ -142,7 +142,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release part py"})
  
-local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "symphony hub has been discontinued but for now it is still working, the next update of supported games can do so crashes your game."})
+
 local Button = HubsTab:CreateButton({
 	Name = " Symphony Hub",
 	Callback = function()
@@ -180,6 +180,7 @@ local Button = HubsTab:CreateButton({
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/svan1lol/svanhub/main/svanhubdahood.lua", true))()
     end,
  })
+local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "symphony hub has been discontinued but for now it is still working, the next update of supported games can do so crashes your game."})
 
 
 
