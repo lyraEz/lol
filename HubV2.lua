@@ -82,12 +82,7 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "Symphon
 	Name = " Shizukii Aimbot v1 |Mobile| '",
 	Callback = function()
 	
-local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub 🔴",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
-    end,
- })	loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/circle/main/aimbot.lua"))()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/circle/main/aimbot.lua"))()
     end,
  })
 
@@ -149,7 +144,12 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
 local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release part py"})
  
 
-
+local Button = HubsTab:CreateButton({
+	Name = " Symphony Hub 🔴",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
+    end,
+ })
  local Button = HubsTab:CreateButton({
 	Name = " R3THPRIV Hub | MM2",
 	Callback = function()
