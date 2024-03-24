@@ -69,15 +69,20 @@ warn("<3")
  local ChangeTab = Window:CreateTab("Changelogs", 4483362458) 
 
 
-local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "Symphony hub has been discontinued."})
 
-
+local Button = HubsTab:CreateButton({
+	Name = " Symphony Hub 🔴",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
+    end,
+ })
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Aimbot v6 |pc| '",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/iK4oS/backdoor.exe/master/source.lua"))()
     end,
  })
+local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "Symphony hub has been discontinued."})
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Aimbot v1 |Mobile| '",
 	Callback = function()
@@ -144,12 +149,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Suppor
 local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release part py"})
  
 
-local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub 🔴",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
-    end,
- })
+
  local Button = HubsTab:CreateButton({
 	Name = " R3THPRIV Hub | MM2",
 	Callback = function()
