@@ -70,27 +70,21 @@ warn("<3")
 
 
 
-local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub 🔴",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
-    end,
- })
+
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot v6 |pc| '",
+	Name = " Shizukii Aimbot v6 |pc|",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/iK4oS/backdoor.exe/master/source.lua"))()
     end,
  })
-local Paragraph = ExpTab:CreateParagraph({Title = "Warning!", Content = "Symphony hub has been discontinued."})
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot v1 |Mobile| '",
+	Name = " Symphony Hub 🔴",
 	Callback = function()
 	
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/circle/main/aimbot.lua"))()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
     end,
  })
-
+local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Symphony hub has been discontinued maybe it doesn't work correctly."})
 
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
@@ -276,7 +270,7 @@ local Button = HubsTab:CreateButton({
 		loadstring(game:HttpGet("https://cdn.wearedevs.net/scripts/Ez%20Hub.txt"))()
     end,
  })
-  
+ 
 
 local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Shizukii Hub is here!"})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more FE scripts."})
