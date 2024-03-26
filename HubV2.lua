@@ -133,6 +133,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these
 		setclipboard("https://discord.gg/yuaN9bG8Mm")
     end,
  })
+local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "If you want a specific script in our Hub, ask for it on our discord or in my dm"})
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Special Thanks to:", Content = ""})
 
