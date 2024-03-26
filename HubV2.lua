@@ -216,9 +216,9 @@ local Button = HubsTab:CreateButton({
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Ry's PSX Gui",
+	Name = " Car Dealership Tycoon",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/PSX%20SCRIPT.lua"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Marco8642/science/main/car%20dealer", true))()
     end,
  })
  local Button = RandomTab:CreateButton({
