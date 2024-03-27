@@ -222,9 +222,9 @@ local Button = HubsTab:CreateButton({
     end,
  })
  local Button = RandomTab:CreateButton({
-	Name = " Legends of Speed | Auto Orbs",
+	Name = " W-azure Hub",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/RyAtlasX/Script-Storages/main/2008.lua"))()
+		loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/3b2169cf53bc6104dabe8e19562e5cc2.lua"))()
     end,
  })
  local Button = RandomTab:CreateButton({
