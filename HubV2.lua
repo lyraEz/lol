@@ -90,6 +90,7 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Symphon
 local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
 
 local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these links in you browser", Content = "Follow us on Github or join our server will helps alot!"})
+local Paragraph = SupportTab:CreateParagraph({Title = "Note", Content = "If you want a specific script on Shizukii Hub, ask on our server or in my DM!"})
 
  local Button = SupportTab:CreateButton({
 	Name = "🖤 Chead.y Dev Github",
