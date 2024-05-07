@@ -16,7 +16,7 @@ local Window = Rayfield:CreateWindow({
  })
   Rayfield:Notify({
    Title = "Bem-vindo ao Shizukii Hub v2",
-   Content = "Much Love ❤️. - Chead.y + cherry",
+   Content = "Much Love ❤️. - Chead.y + .......",
    Duration = 6.5,
    Image = 4483362458,
    Actions = { -- Notification Buttons
@@ -74,17 +74,24 @@ warn("<3")
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Aimbot v6 |pc|",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/iK4oS/backdoor.exe/master/source.lua"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/Hub%20aimbot.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
-	Name = " Symphony Hub 🔴",
+	Name = " Shizukii Aimbot Mobile",
 	Callback = function()
-	
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/symphony/main/symphonygg", true))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/circle%20aim"))()
     end,
  })
-local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Symphony hub has been discontinued maybe it doesn't work correctly."})
+ local Button = ExpTab:CreateButton({
+	Name = " Shizukii Hitbox expanded + Esp",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/hitbox%20esp"))()
+    end,
+ })
+
+local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "I coming back."})
+local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox expandido + Esp is universal"})
 
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
@@ -142,6 +149,8 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Cherry", Content = "Testin
 local Paragraph = CreditTab:CreateParagraph({Title = "Ui lib", Content = "Supporting!"})
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release part py"})
+
+local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown..."})
  
 
 
@@ -152,9 +161,9 @@ local Paragraph = CreditTab:CreateParagraph({Title = "Dudyn", Content = "Release
     end,
  })
  local Button = HubsTab:CreateButton({
-	Name = " Eclipse Hub (only fluxus)",
+	Name = " Symphony Hub",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Ethanoj1/EclipseMM2/master/Script", true))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/Loader%20symphony.lua", true))()
     end,
  })
   
@@ -259,7 +268,7 @@ local Button = HubsTab:CreateButton({
  })
  
  local Button = HubsTab:CreateButton({
-	Name = " Tela Esticada",
+	Name = " Stretch Resolution",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ySixxNz/SIXHUB-UNIVERSAL/SixHub-Universal/SixHub-Universal"))()
     end,
@@ -274,7 +283,7 @@ local Button = HubsTab:CreateButton({
  
 
 local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Shizukii Hub is here!"})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more FE scripts."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more scripts."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.3", Content = "Added more scripts and animation is fixed, And more..."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.4.4", Content = "Added Infamy script, Legend of speed back to the Shizukii hub, moved Solar to Utilites selection."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.5", Content = "Added Symphony and Eclipse Hub."})
