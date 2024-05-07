@@ -70,28 +70,28 @@ warn("<3")
 
 
 
+local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Experimental features it can crash your game."})
+local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox + Esp is universal"})
 
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot v6 |pc|",
+	Name = " Shizukii Aimbot Mobile",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/Hub%20aimbot.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot Mobile",
+	Name = " Shizukii Aimbot pc",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/circle%20aim"))()
     end,
  })
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Hitbox expanded + Esp",
+	Name = " Shizukii Hitbox + Esp",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/hitbox%20esp"))()
     end,
  })
 
-local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "I coming back."})
-local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox expandido + Esp is universal"})
 
 
 local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
