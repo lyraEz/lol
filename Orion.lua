@@ -22,32 +22,18 @@ local Tab = Window:MakeTab({
 	Icon = "rbxassetid://4483345998",
 	PremiumOnly = false
 })
-Tab:AddSlider({
-	Name = "Resolution Stretcher",
-	Min = 0.2,
-	Max = 10,
-	Default = 1,
-	Color = Color3.fromRGB(255,255,255),
-	Increment = 1,
-	ValueName = "Default 1",
+Tab:AddDropdown({
+	Name = "Dropdown",
+	Default = "1",
+	Options = {"1", "2"},
 	Callback = function(Value)
-		print(ew Raw
-Edited By: flownexploitss
-
-Copy Script
-Download
-getgenv().Resolution = {
-    [".gg/scripters"] = 
-}
-
-local Camera = workspace.CurrentCamera
-if getgenv().gg_scripters == nil then
-    game:GetService("RunService").RenderStepped:Connect(
-        function()
-            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, getgenv().Resolution[".gg/scripters"], 0, 0, 0, 1)
-        end
-    )
-end
-getgenv().gg_scripters = "Aori0001")
+		print(Value)
 	end    
 })
+
+--[[
+Name = <string> - The name of the dropdown.
+Default = <string> - The default value of the dropdown.
+Options = <table> - The options in the dropdown.
+Callback = <function> - The function of the dropdown.
+]]
