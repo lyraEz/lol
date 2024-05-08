@@ -11,14 +11,14 @@ local Section = Tab:AddSection({
 })
 Tab:AddButton({
 	Name = "Aimbot Pc + Mobile",
-	Callback = function(loadstring(game:HttpGet("https://raw.githubusercontent.com/RedWirePlatinumTwo/RobloxScripts/main/Aimbot.lua"))())
-      		print()
+	Callback = function()
+      		print(loadstring(game:HttpGet('https://raw.githubusercontent.com/pcallskeleton/CE-Technologies/main/script', true))())
   	end    
 })
 
 
 local Tab = Window:MakeTab({
 	Name = "Tab 1",
-	Icon = "rbxassetid://11583101826",
+	Icon = "rbxassetid://4483345998",
 	PremiumOnly = false
 })
