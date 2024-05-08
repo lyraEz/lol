@@ -1,4 +1,3 @@
--- Moveable Work At Moblie/PC 
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/thanhdat4461/OrionMoblie/main/source')))()
 local Window = OrionLib:MakeWindow({Name = "Shizukii Premium", HidePremium = false, SaveConfig = true, ConfigFolder = "Shizukii Loader"})
 
@@ -8,15 +7,14 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 local Section = Tab:AddSection({
-	Name = "MM2 Scripts"
+	Name = "Universal Scripts"
 })
 Tab:AddButton({
-	Name = "Button!",
+	Name = "Aimbot Pc + Mobile",
 	Callback = function(loadstring(game:HttpGet("https://raw.githubusercontent.com/RedWirePlatinumTwo/RobloxScripts/main/Aimbot.lua"))())
       		print()
   	end    
 })
-
 
 
 local Tab = Window:MakeTab({
