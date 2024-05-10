@@ -91,6 +91,12 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox + Es
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/hitbox%20esp"))()
     end,
  })
+local Button = ExpTab:CreateButton({
+	Name = " Shizukii MM2 fun features 🤓",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/MM2fun.lua"))()
+    end,
+ })
 
 
 
