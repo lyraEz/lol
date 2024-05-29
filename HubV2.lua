@@ -16,7 +16,7 @@ local Window = Rayfield:CreateWindow({
  })
   Rayfield:Notify({
    Title = "Bem-vindo ao Shizukii Hub v2",
-   Content = "Much Love ❤️. - Chead.y + .......",
+   Content = "Much Love ❤️. - Chead.y",
    Duration = 6.5,
    Image = 4483362458,
    Actions = { -- Notification Buttons
