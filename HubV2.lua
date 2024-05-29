@@ -172,7 +172,6 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
     end,
    },
-},
  })
 		setclipboard("key: hlontop")
     end,
