@@ -167,9 +167,9 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
     end,
  })
  local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub",
+	Name = " highlight Hub",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/Loader%20symphony.lua", true))()
+		 loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
     end,
  })
   
