@@ -176,7 +176,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
 
   
      local Button = HubsTab:CreateButton({
-    Name = " Bedol Hub",
+    Name = " Bedol Hub | key",
     Callback = function()
     loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
     end,
