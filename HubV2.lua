@@ -169,10 +169,10 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
  local Button = HubsTab:CreateButton({
 	Name = " highlight Hub",
 	Callback = function()
-		 loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
     end,
  })
-		setclipboard("hlontop")
+		setclipboard("key: hlontop")
     end,
  })
   
