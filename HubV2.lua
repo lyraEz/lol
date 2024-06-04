@@ -76,7 +76,7 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox + Es
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Aimbot Mobile",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/Hub%20aimbot.lua"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/RedWirePlatinumTwo/RobloxScripts/main/Aimbot.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
@@ -181,6 +181,22 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
     loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
     end,
  })
+local Button = HubsTab:CreateButton({
+		Name = " Visual Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		name = " Nexus Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
+		end,
+	})
+
+
+
+
      local Button = HubsTab:CreateButton({
     Name = " Dark Cheat | MM2",
     Callback = function()
