@@ -139,7 +139,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content
       Ignore = {
          Name = "Okay!",
          Callback = function()
-         print("chead e Shxi")
+         print("chead")
       end
    },
 },
@@ -171,7 +171,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
 	Callback = function()
 			Rayfield:Notify({
    Title = "Key copied from you clipboard",
-   Content = "Have A good time",
+   Content = "Have a good time",
    Duration = 1.5,
    Image = 4483362458,
    Actions = { -- Notification Buttons
@@ -306,9 +306,8 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
 		end,
 	})
-
 local Button = HubsTab:CreateButton({
-		name = " Nexus Hub",
+		Name = " Nexus Hub",
 		Callback = function()
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
 		end,
