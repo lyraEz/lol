@@ -15,7 +15,7 @@ local Window = Rayfield:CreateWindow({
     },
  })
   Rayfield:Notify({
-   Title = "Bem-vindo ao Shizukii Hub v2",
+   Title = "Welcome to Shizukii Hub v2",
    Content = "Much Love ❤️. - Chead.y",
    Duration = 6.5,
    Image = 4483362458,
@@ -30,11 +30,11 @@ local Window = Rayfield:CreateWindow({
 })
  Rayfield:Notify({
 	Title = "Notification",
-	Content = "Hey! Thanks for choosing Shizukii Hub, i put lots of efforts in this. Enjoy!",
+	Content = "Hey! Thanks for choosing Shizukii Hub, I put lots of efforts in this. Enjoy!",
 	Duration = 6.5,
 	Image = 4483362458,
 	Actions = { -- Notification Buttons
-	   Ignore = {
+ 	   Ignore = {
 		  Name = "Okay!",
 		  Callback = function()
 		  print("The user Replied, Okay!")
@@ -171,7 +171,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
 	Callback = function()
 			Rayfield:Notify({
    Title = "Key copied from you clipboard",
-   Content = "",
+   Content = "Have A good time",
    Duration = 1.5,
    Image = 4483362458,
    Actions = { -- Notification Buttons
