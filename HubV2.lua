@@ -169,34 +169,31 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
  local Button = HubsTab:CreateButton({
 	Name = " highlight Hub",
 	Callback = function()
+			Rayfield:Notify({
+   Title = "Key copied from you clipboard",
+   Content = "",
+   Duration = 1.5,
+   Image = 4483362458,
+   Actions = { -- Notification Buttons
+      Ignore = {
+         Name = "Okay!",
+         Callback = function()
+         print("The user tapped Okay!")
+      end
+   },
+},
+})
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
     end,
-		setclipboard("key: hlontop")
+		setclipboard("hlontop")
  })
 
-  
      local Button = HubsTab:CreateButton({
     Name = " Bedol Hub | key",
     Callback = function()
     loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
     end,
  })
-local Button = HubsTab:CreateButton({
-		Name = " Visual Hub",
-		Callback = function()
-			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
-		end,
-	})
-local Button = HubsTab:CreateButton({
-		name = " Nexus Hub",
-		Callback = function()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
-		end,
-	})
-
-
-
-
      local Button = HubsTab:CreateButton({
     Name = " Dark Cheat | MM2",
     Callback = function()
@@ -209,7 +206,6 @@ local Button = HubsTab:CreateButton({
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/svan1lol/svanhub/main/svanhubdahood.lua", true))()
     end,
  })
-
 
 
  local Button = RandomTab:CreateButton({
@@ -304,7 +300,19 @@ local Button = HubsTab:CreateButton({
 		loadstring(game:HttpGet("https://cdn.wearedevs.net/scripts/Ez%20Hub.txt"))()
     end,
  })
- 
+local Button = HubsTab:CreateButton({
+		Name = " Visual Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
+		end,
+	})
+
+local Button = HubsTab:CreateButton({
+		name = " Nexus Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
+		end,
+	})
 
 local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Shizukii Hub is here!"})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more scripts."})
