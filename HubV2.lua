@@ -169,7 +169,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
  local Button = HubsTab:CreateButton({
 	Name = " highlight Hub",
 	Callback = function()
-			Rayfield:Notify({
+	Rayfield:Notify({
    Title = "Key copied from you clipboard",
    Content = "Have a good time",
    Duration = 1.5,
@@ -185,7 +185,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
 })
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
     end,
-		setclipboard("hlontop")
+		setclipboard("hlvipcomingsoon")
  })
 
      local Button = HubsTab:CreateButton({
