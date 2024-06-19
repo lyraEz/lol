@@ -174,7 +174,7 @@ local Paragraph = CreditTab:CreateParagraph({Title = "tskz", Content = "Unknown.
    Content = "Have a good time",
    Duration = 1.5,
    Image = 4483362458,
-   Actions = { -- Notification Buttons
+   Actions = { --
       Ignore = {
          Name = "Okay!",
          Callback = function()
