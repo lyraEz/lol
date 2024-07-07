@@ -324,3 +324,4 @@ local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.8", Content = "A
 local Paragraph = ChangeTab:CreateParagraph({Title = "Demo v1.9", Content = "Changed somethings in 'Support Us!' tab"})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.9.2", Content = "Added Experiment Tab."})
 local Paragraph = ChangeTab:CreateParagraph({Title = "Update v2", Content = "Huge Update! Renamed 'Random Scripts' to '2nd Scripts Tab'. added much new scripts! and more decorations! Made the buttons more specific! And More!!!."})
+local Paragraph = ChangeTab:CreateParagraph({Title = "Update v0", Content = "I no longer update change logs😞."})
