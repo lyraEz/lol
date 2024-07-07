@@ -12,7 +12,7 @@
 -- // https://www.roblox.com/catalog/20372960/Bed-Hair
 -- // https://www.roblox.com/catalog/8337370/Blockhead-Baseball-Cap
 
-Script:
+-- // Script:
 
 -- // define alias for http function
  
