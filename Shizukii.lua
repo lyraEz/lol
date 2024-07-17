@@ -14,38 +14,10 @@ local Window = Rayfield:CreateWindow({
        RememberJoins = true -- Set this to false to make them join the discord every time they load it up
     },
  })
-  Rayfield:Notify({
-   Title = "Welcome to Shizukii Hub v2",
-   Content = "Much Love ❤️. - Chead.y",
-   Duration = 6.5,
-   Image = 4483362458,
-   Actions = { -- Notification Buttons
-      Ignore = {
-         Name = "Okay!",
-         Callback = function()
-         print("The user Replied, Okay!")
-      end
-   },
-},
-})
- Rayfield:Notify({
-	Title = "Notification",
-	Content = "Hey! Thanks for choosing Shizukii Hub, I put lots of efforts in this. Enjoy!",
-	Duration = 6.5,
-	Image = 4483362458,
-	Actions = { -- Notification Buttons
- 	   Ignore = {
-		  Name = "Okay!",
-		  Callback = function()
-		  print("The user Replied, Okay!")
-	   end
-	},
- },
- })
  Rayfield:Notify({
    Title = "Warning!",
    Content = "Some of these script may crash your game or won't work. Thank you for using the hub",
-   Duration = 6.5,
+   Duration = 2.5,
    Image = 4483362458,
    Actions = { -- Notification Buttons
       Ignore = {
@@ -74,13 +46,13 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Experim
 local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox + Esp is universal"})
 
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot Mobile",
+	Name = " Shizukii Aimbot fov circle (without hub)",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/RedWirePlatinumTwo/RobloxScripts/main/Aimbot.lua"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/aimbot%20fov%20circle.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot pc",
+	Name = " Shizukii Aimbot pc and mobile",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/circle%20aim"))()
     end,
