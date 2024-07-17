@@ -52,9 +52,9 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox + Es
     end,
  })
  local Button = ExpTab:CreateButton({
-	Name = " Shizukii Aimbot pc and mobile",
+	Name = " Shizukii Aimbot pc and mobile Hub",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/circle%20aim"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/Darkcheat%20aimbot.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
