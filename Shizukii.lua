@@ -69,7 +69,7 @@ local Button = HubsTab:CreateButton({
 		end,
 	})
 local Button = Hubstab:CreateButton({
-		name = " Yarm Hub"
+		name = " Yarm Hub",
 		Callback = function()
 			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-YARHM-12403"))()
 		end,
@@ -95,7 +95,7 @@ local Button = HubsTab:CreateButton({
 		end,
 	})
 local Button = HubsTab:CreateButton({
-		name = " Gosse Hub"
+		name = " Gosse Hub",
 		Callback =function()
 			loadstring(game:HttpGet("https://scriptblox.com/raw/Blade-Ball-CLASSIC-Goose-Hub-13438"))()
 		end,
