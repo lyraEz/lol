@@ -65,13 +65,19 @@ warn("<3")
 local Button = HubsTab:CreateButton({
 		Name = " Nexus Hub",
 		Callback = function()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
+			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-MurderMystery2-Best-script-nexus-hub-no-key-15580"))()
 		end,
 	})
 local Button = HubsTab:CreateButton({
 		Name = " Yarhm Hub",
 		Callback = function()
 			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-YARHM-12403"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " GG Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-GG-HUB-15602"))()
 		end,
 	})
 local Button = HubsTab:CreateButton({
