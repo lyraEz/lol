@@ -68,6 +68,25 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
 		end,
 	})
+ local HubsTab = Window:CreateTab("Blade ball ", 4483362458) 
+     local Button = HubsTab:CreateButton({
+    Name = " Bedol Hub | key",
+    Callback = function()
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
+    end,
+ }) 
+ local Button = RandomTab:CreateButton({
+	Name = " Redz Hub",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
+    end,
+ })
+local Button = HubsTab:CreateButton({
+		Name = " Visual Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
+		end,
+	})
  local ExpTab = Window:CreateTab("Experimental ") 
 local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Experimental features it can crash your game."})
 local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox + Esp is universal"})
@@ -103,9 +122,9 @@ local Button = ExpTab:CreateButton({
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ySixxNz/SIXHUB-UNIVERSAL/SixHub-Universal/SixHub-Universal"))()
     end,
  })
- local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
-local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
 
+local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
+local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
 local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these links in you browser", Content = "Follow us on Github or join our server will helps alot!"})
 local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content = "If you want a specific script on Shizukii, ask on our server or in my DM!"})
 
@@ -151,36 +170,3 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content
 		setclipboard("https://discord.gg/yuaN9bG8Mm")
     end,
  })
- local ChangeTab = Window:CreateTab("Blade ball ", 4483362458) 
-     local Button = HubsTab:CreateButton({
-    Name = " Bedol Hub | key",
-    Callback = function()
-    loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
-    end,
- })
-    
- local Button = RandomTab:CreateButton({
-	Name = " Redz Hub",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
-    end,
- })
-local Button = HubsTab:CreateButton({
-		Name = " Visual Hub",
-		Callback = function()
-			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
-		end,
-	})
-
-local Paragraph = ChangeTab:CreateParagraph({Title = "Release v1.1", Content = "The Rayfield version of Shizukii Hub is here!"})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.2", Content = "Added selections, more script hubs, more scripts."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.3", Content = "Added more scripts and animation is fixed, And more..."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.4.4", Content = "Added Infamy script, Legend of speed back to the Shizukii hub, moved Solar to Utilites selection."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.5", Content = "Added Symphony and Eclipse Hub."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.6", Content = "Added Energize Animation Gui."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.7.2", Content = "Added Owlhub, Ez hub, Muscle Legends script."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.8", Content = "Added Support Tab, Credits Tab."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Demo v1.9", Content = "Changed somethings in 'Support Us!' tab"})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v1.9.2", Content = "Added Experiment Tab."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v2", Content = "Huge Update! Renamed 'Random Scripts' to '2nd Scripts Tab'. added much new scripts! and more decorations! Made the buttons more specific! And More!!!."})
-local Paragraph = ChangeTab:CreateParagraph({Title = "Update v0", Content = "I no longer update change logs😞."})
