@@ -68,6 +68,13 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
 		end,
 	})
+local Button = Hubstab:CreateButton({
+		name = " Yarm Hub"
+		Callback = function()
+			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-YARHM-12403"))()
+		end,
+})
+
  local HubsTab = Window:CreateTab("Blade ball ", 4483362458) 
      local Button = HubsTab:CreateButton({
     Name = " Bedol Hub | key",
@@ -87,6 +94,13 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
 		end,
 	})
+local Button = HubsTab:CreateButton({
+		name = " Gosse Hub"
+		Callback =function()
+			loadstring(game:HttpGet("https://scriptblox.com/raw/Blade-Ball-CLASSIC-Goose-Hub-13438"))()
+		end,
+	})
+
  local ExpTab = Window:CreateTab("Experimental ") 
 local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Experimental features it can crash your game."})
 local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "Hitbox + Esp is universal"})
