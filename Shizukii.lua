@@ -53,14 +53,14 @@ warn("<3")
       Ignore = {
          Name = "Okay!",
          Callback = function()
-         print("The user tapped Okay!")
+         print("chead")
       end
    },
 },
 })
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
-    end,
 		setclipboard("hlvipcomingsoon")
+    end,
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
  })
 local Button = HubsTab:CreateButton({
 		Name = " Nexus Hub",
@@ -75,7 +75,7 @@ local Button = HubsTab:CreateButton({
     loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
     end,
  }) 
- local Button = RandomTab:CreateButton({
+ local Button = HubsTab:CreateButton({
 	Name = " Redz Hub",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
@@ -115,8 +115,7 @@ local Button = ExpTab:CreateButton({
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/MM2fun.lua"))()
     end,
  })
-
- local Button = HubsTab:CreateButton({
+ local Button = ExpTab:CreateButton({
 	Name = "Stretch Resolution ",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ySixxNz/SIXHUB-UNIVERSAL/SixHub-Universal/SixHub-Universal"))()
@@ -124,7 +123,6 @@ local Button = ExpTab:CreateButton({
  })
 
 local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
-local Paragraph = CreditTab:CreateParagraph({Title = "Creator", Content = "By chead"})
 local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these links in you browser", Content = "Follow us on Github or join our server will helps alot!"})
 local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content = "If you want a specific script on Shizukii, ask on our server or in my DM!"})
 
