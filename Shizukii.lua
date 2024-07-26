@@ -44,6 +44,7 @@ warn("<3")
  local Button = HubsTab:CreateButton({
 	Name = " highlight Hub",
 	Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
 	Rayfield:Notify({
    Title = "Key copied from you clipboard",
    Content = "Have a good time",
@@ -58,9 +59,8 @@ warn("<3")
    },
 },
 })
-		setclipboard("hlvipcomingsoon")
-    end,
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
+	setclipboard("hlvipcomingsoon")	
+    end,	
  })
 local Button = HubsTab:CreateButton({
 		Name = " Nexus Hub",
