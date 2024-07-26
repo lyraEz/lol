@@ -68,14 +68,15 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/s-o-a-b/nexus/main/loadstring"))()
 		end,
 	})
-local Button = Hubstab:CreateButton({
-		name = " Yarm Hub",
+local Button = HubsTab:CreateButton({
+		Name = " Yarhm Hub",
 		Callback = function()
 			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-YARHM-12403"))()
 		end,
-})
+	})
 
- local HubsTab = Window:CreateTab("Blade ball ", 4483362458) 
+
+local HubsTab = Window:CreateTab("Blade ball ", 4483362458) 
      local Button = HubsTab:CreateButton({
     Name = " Bedol Hub | key",
     Callback = function()
@@ -95,8 +96,8 @@ local Button = HubsTab:CreateButton({
 		end,
 	})
 local Button = HubsTab:CreateButton({
-		name = " Gosse Hub",
-		Callback =function()
+		Name = " Gosse Hub",
+		Callback = function()
 			loadstring(game:HttpGet("https://scriptblox.com/raw/Blade-Ball-CLASSIC-Goose-Hub-13438"))()
 		end,
 	})
