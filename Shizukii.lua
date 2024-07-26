@@ -74,7 +74,12 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-YARHM-12403"))()
 		end,
 	})
-
+local Button = HubsTab:CreateButton({
+		Name = "🔴 MM2 fun features🤓",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/MM2fun.lua"))()
+		end,
+	})
 
 local HubsTab = Window:CreateTab("Blade ball 📜", 4483362458) 
      local Button = HubsTab:CreateButton({
@@ -83,12 +88,6 @@ local HubsTab = Window:CreateTab("Blade ball 📜", 4483362458)
     loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
     end,
  }) 
- local Button = HubsTab:CreateButton({
-	Name = " Redz Hub",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
-    end,
- })
 local Button = HubsTab:CreateButton({
 		Name = " Visual Hub",
 		Callback = function()
@@ -128,12 +127,6 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts
 	Name = " Shizukii Hitbox + Esp",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/hitbox%20esp"))()
-    end,
- })
-local Button = ExpTab:CreateButton({
-	Name = " Shizukii MM2 fun features 🤓",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/MM2fun.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
