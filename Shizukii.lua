@@ -99,6 +99,12 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-YARHM-12403"))()
 		end,
 	})
+local Button = HubsTab:CreateButton({
+		Name = " Simple Hub",
+		Callback = function()
+			loadstring(game:HttpGet('https://rentry.co/9uqkr/raw'))()
+		end,
+	})
  local ExpTab = Window:CreateTab("Experimental ") 
 local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Experimental features it can crash your game."})
 local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts is universal"})
