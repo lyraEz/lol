@@ -81,15 +81,16 @@ local HubsTab = Window:CreateTab("Blade ball 📜", 4483362458)
     end,
  }) 
 local Button = HubsTab:CreateButton({
-		Name = " Visual Hub",
+		Name = " Astra Hub",
 		Callback = function()
-			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/0aefed07fd25b2369e282001ca3c2838.lua"))()
+			getgenv().Auth = "freenium_auth"
+loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/b6cc646cf4d4eb44647236da9b7fa2f0.lua"))()
 		end,
 	})
 local Button = HubsTab:CreateButton({
-		Name = " Gosse Hub",
+		Name = " Nexam Hub",
 		Callback = function()
-			loadstring(game:HttpGet("https://scriptblox.com/raw/Blade-Ball-CLASSIC-Goose-Hub-13438"))()
+			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/6af56c1753ac6679dee3acbd1fd952e5.lua"))()
 		end,
 	})
 local HubsTab = Window:CreateTab("flee the facility  📜", 4483362458)
