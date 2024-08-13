@@ -36,9 +36,15 @@ warn("<3")
  
  local HubsTab = Window:CreateTab("Murder Mystery 2 📜", 4483362458) 
  local Button = HubsTab:CreateButton({
-	Name = " Symphony Hub| MM2",
+	Name = " Symphony Hub",
 	Callback = function()
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/ThatSick/ArrayField/main/SymphonyHub.lua'))()
+    end,
+ })
+ local Button = HubsTab:CreateButton({
+	Name = " eclipse Hub",
+	Callback = function()
+		loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/eclios.lua'))()
     end,
  })
  local Button = HubsTab:CreateButton({
