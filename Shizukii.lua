@@ -69,7 +69,7 @@ local Button = HubsTab:CreateButton({
 local Button = HubsTab:CreateButton({
 		Name = "🔴 MM2 fun features🤓",
 		Callback = function()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/MM2fun.lua"))()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/MM2fun.lua"))()
 		end,
 	})
 
@@ -113,19 +113,19 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Aimbot fov circle (without hub)",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/aimbot%20fov%20circle.lua"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/aimbot%20fov%20circle.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Aimbot pc and mobile Hub",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/Darkcheat%20aimbot.lua"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/darkcheat%20aimbot.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Hitbox + Esp",
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/chead-z/lol/main/hitbox%20esp"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/hitbox.lua"))()
     end,
  })
  local Button = ExpTab:CreateButton({
@@ -134,7 +134,12 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ySixxNz/SIXHUB-UNIVERSAL/SixHub-Universal/SixHub-Universal"))()
     end,
  })
-
+local Button = ExpTab:CreateButton({
+	Name = "🔴 Stretch Resolution",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/resolution.lua"))()
+    end,
+ })
 local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
 local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these links in you browser", Content = "Follow us on Github or join our server will helps alot!"})
 local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content = "If you want a specific script on Shizukii, ask on our server or in my DM!"})
