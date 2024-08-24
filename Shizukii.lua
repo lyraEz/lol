@@ -85,9 +85,9 @@ local Button = HubsTab:CreateButton({
 		end,
 	})
 
-local HubsTab = Window:CreateTab("Blade ball 📜", 4483362458) 
+local HubsTab = Window:CreateTab("Blade Ball 📜", 4483362458) 
      local Button = HubsTab:CreateButton({
-    Name = " IDK😭 Hub",
+    Name = " DungKee Hub",
     Callback = function()
 			xpcall(function()
 loadstring(game:HttpGet("https://github.com/Stang001/pulawat/blob/main/BladeBall.lua?raw=true"))()
