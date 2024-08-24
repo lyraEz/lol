@@ -11,8 +11,8 @@ if Fluxus and not Cache then
 	Cache = true
 	
 	game:GetService("StarterGui"):SetCore("SendNotification",{
-		Title = "Hf/Sf",
-		Text = "Hf to hide\nSf to show",
+		Title = ",H/,S",
+		Text = ",H to hide | ,S to show",
 		Duration = 7.5,
 	})
 	
@@ -21,10 +21,10 @@ if Fluxus and not Cache then
 		if TCS then return end
 		local properties = Instance.new("TextChatMessageProperties")
 		PLC:Disconnect()
-		if message.Text:lower() == "hf" then
+		if message.Text:lower() == ",H" then
 			Fluxus.Enabled = false
 			return
-		elseif message.Text:lower() == "sf" then
+		elseif message.Text:lower() == ",S" then
 			Fluxus.Enabled = true
 			return
 		end
@@ -33,10 +33,10 @@ if Fluxus and not Cache then
 
 	PLC = Players.LocalPlayer.Chatted:Connect(function(message)
 		TCS = true
-		if message:lower() == "hf" then
+		if message:lower() == ",H" then
 			Fluxus.Enabled = false
 			return
-		elseif message:lower() == "sf" then
+		elseif message:lower() == ",S" then
 			Fluxus.Enabled = true
 			return
 		end
