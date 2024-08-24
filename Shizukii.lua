@@ -125,12 +125,6 @@ local Button = HubsTab:CreateButton({
 		end,
 	})
 local Button = HubsTab:CreateButton({
-		Name = "  Hiru Hub",
-		Callback = function()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/NGUYENVUDUY1/VietSub/main/HiruHub.lua"))() 
-		end,
-	})
-local Button = HubsTab:CreateButton({
 		Name = "  Redz Hub",
 		Callback = function()
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
