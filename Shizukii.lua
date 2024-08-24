@@ -89,7 +89,11 @@ local HubsTab = Window:CreateTab("Blade ball 📜", 4483362458)
      local Button = HubsTab:CreateButton({
     Name = " Nizus Hub",
     Callback = function()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/uwumani/Nizus/main/Nizus.lua"))()
+			xpcall(function()
+loadstring(game:HttpGet("https://github.com/Stang001/pulawat/blob/main/BladeBall.lua?raw=true"))()
+end,function()
+warn("Script error!")
+end)
     end,
  }) 
 local Button = HubsTab:CreateButton({
@@ -114,7 +118,7 @@ local Button = HubsTab:CreateButton({
 local Button = HubsTab:CreateButton({
 		Name = " Nexam Hub",
 		Callback = function()
-			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/6af56c1753ac6679dee3acbd1fd952e5.lua"))()
+			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/ea80f1b008dbe2b77b7ac8b3a525a180.lua"))()
 		end,
 	})
 local HubsTab = Window:CreateTab("Blox Fruits 📜", 4483362458)
