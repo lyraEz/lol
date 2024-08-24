@@ -181,6 +181,26 @@ local Button = ExpTab:CreateButton({
 	Name = " Silent aim Hub",
 	Callback = function()
 		loadstring(game:HttpGet("https://rentry.co/s7dbgz3o/raw", true))()
+			Rayfield:Notify({
+	Title = "Note",
+	Content = "This Silent aim no works all games :(",
+	Duration = 6.5,
+	Image = 4483362458,
+	Actions = { -- Notification Buttons
+		Ignore = { -- Variant 1
+			Name = "SHUT UP",
+			Callback = function()
+				print("")
+			end
+		},
+		Accept = { -- Variant 2
+			Name = "Ok",
+			Callback = function()
+				print("")
+			end
+		},
+	},
+})
     end,
  })
 local Button = ExpTab:CreateButton({
