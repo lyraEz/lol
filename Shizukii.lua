@@ -48,13 +48,13 @@ local Button = HubsTab:CreateButton({
     end,
  })
  local Button = HubsTab:CreateButton({
-	Name = " eclipse Hub",
+	Name = " Eclipse Hub",
 	Callback = function()
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/eclios.lua'))()
     end,
  })
  local Button = HubsTab:CreateButton({
-    Name = " highlight Hub",
+    Name = " Highlight Hub",
     Callback = function()
         setclipboard("hlvipcomingsoon")
         loadstring(game:HttpGet("https://raw.githubusercontent.com/ThatSick/HighlightMM2/main/Main"))()
@@ -87,22 +87,53 @@ local Button = HubsTab:CreateButton({
 
 local HubsTab = Window:CreateTab("Blade ball 📜", 4483362458) 
      local Button = HubsTab:CreateButton({
-    Name = " Bedol Hub | key",
+    Name = " Nizus Hub",
     Callback = function()
-    loadstring(game:HttpGet('https://raw.githubusercontent.com/nqxlOfc/Loaders/main/Blade_Ball.lua'))() -- The function that takes place when the button is pressed
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/uwumani/Nizus/main/Nizus.lua"))()
     end,
  }) 
 local Button = HubsTab:CreateButton({
-		Name = " Astra Hub",
+		Name = " Chaotic Hub",
 		Callback = function()
-			getgenv().Auth = "freenium_auth"
-loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/b6cc646cf4d4eb44647236da9b7fa2f0.lua"))()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/Mc4121ban/trashscript/main/chaotic.lua"))()
+		end,
+	})
+
+local Button = HubsTab:CreateButton({
+		Name = "  FFJ V3 Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/FFJ1/Roblox-Exploits/main/scripts/BladeBallV3.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Ether Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/6w0s/_6w0s/main/Loader.lua"))()
 		end,
 	})
 local Button = HubsTab:CreateButton({
 		Name = " Nexam Hub",
 		Callback = function()
 			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/6af56c1753ac6679dee3acbd1fd952e5.lua"))()
+		end,
+	})
+local HubsTab = Window:CreateTab("Blox Fruits 📜", 4483362458)
+local Button = HubsTab:CreateButton({
+		Name = "  Xero Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/devdoroz/bleachhack/main/newloader.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = "  Hiru Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/NGUYENVUDUY1/VietSub/main/HiruHub.lua"))() 
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = "  Redz Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
 		end,
 	})
 local HubsTab = Window:CreateTab("flee the facility  📜", 4483362458)
