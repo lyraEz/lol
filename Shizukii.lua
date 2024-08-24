@@ -2,7 +2,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
     Name = "Shizukii Hub V2 ",
     LoadingTitle = "Shizukii Hub V2  is loading..",
-    LoadingSubtitle = "By chead.y and you! ",
+    LoadingSubtitle = "By chead.y ",
     ConfigurationSaving = {
        Enabled = false,
        FolderName = Shizukii, -- Create a custom folder for your hub/game
@@ -171,7 +171,53 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/AnDepZaiHub/AnDepZaiHubBeta/main/AnDepZaiHubBeta.lua"))()
 		end,
 	})
-local HubsTab = Window:CreateTab("flee the facility  📜", 4483362458)
+local HubsTab = Window:CreateTab("Rivals  📜", 4483362458)
+local Button = HubsTab:CreateButton({
+		Name = " Nexam Hub Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/86c2ae2bea7bd8f522b1db3283b56967.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " InfiniX Hub",
+		Callback = function()
+			local __function = loadstring(game:HttpGet("https://github.com/Hosvile/InfiniX/releases/latest/download/main.lua", true))
+
+__function(__function)
+		end,
+	})
+local HubsTab = Window:CreateTab("Pet Simulator 99  📜", 4483362458)
+local Button = HubsTab:CreateButton({
+		Name = " Zap Hub",
+		Callback = function()
+			loadstring(game:HttpGet('https://zaphub.xyz/Exec'))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " W-Azure Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/4c8e3ee28e64ee380d7251b64c0801fb.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Redz Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/PetSimulator99/main/redz9999.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Idiot Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/Somerandomidiot/Lua/main/PS99_Protected.txt"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Lenut Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/lenutjr/lenut/main/scripts"))()
+		end,
+	})
+local HubsTab = Window:CreateTab("Flee the Facility  📜", 4483362458)
 local Button = HubsTab:CreateButton({
 		Name = " Yarhm Hub",
 		Callback = function()
