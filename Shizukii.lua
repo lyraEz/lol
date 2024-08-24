@@ -178,12 +178,6 @@ local Button = ExpTab:CreateButton({
     end,
  })
 local Button = ExpTab:CreateButton({
-		Name = " Silent aim Hub",
-		Callback = function()
-			loadstring(game:HttpGet("https://rentry.co/s7dbgz3o/raw", true))()
-		end,
-	})
-local Button = ExpTab:CreateButton({
 	Name = "🔴 Stretch Resolution",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/resolution.lua"))()
