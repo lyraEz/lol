@@ -87,7 +87,7 @@ local Button = HubsTab:CreateButton({
 
 local HubsTab = Window:CreateTab("Blade ball 📜", 4483362458) 
      local Button = HubsTab:CreateButton({
-    Name = " Nizus Hub",
+    Name = " IDK😭 Hub",
     Callback = function()
 			xpcall(function()
 loadstring(game:HttpGet("https://github.com/Stang001/pulawat/blob/main/BladeBall.lua?raw=true"))()
@@ -132,6 +132,43 @@ local Button = HubsTab:CreateButton({
 		Name = "  Redz Hub",
 		Callback = function()
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Smile Hub",
+		Callback = function()
+			repeat wait() until game:IsLoaded()
+_G.Team = "Pirates" -- Pirates / Marines
+loadstring(game:HttpGet("https://raw.githubusercontent.com/HuyLocDz/Blox-Fruit/main/TinhLinhHub.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Neva Hub",
+		Callback = function()
+			loadstring(game:HttpGet('https://raw.githubusercontent.com/VEZ2/NEVAHUB/main/2'))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Sitinks Hub",
+		Callback = function()
+			getgenv().Team = "Pirates"
+getgenv().Executor = "Android" -- Android or PC --
+loadstring(game:HttpGet("https://raw.githubusercontent.com/MinhNghia2k11/Main/main/SitinksHub.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " Hades Hub",
+		Callback = function()
+			getgenv().Team = "Pirates" -- Pirates, Marines
+getgenv().AntiCrash = false -- Anti Crash when load script/func idk
+getgenv().BoostFps = false -- recommend if you have bad phone
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ItzWindy01/Loadstring/main/HadesGod.lua"))()
+		end,
+	})
+local Button = HubsTab:CreateButton({
+		Name = " AnDepZai Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/AnDepZaiHub/AnDepZaiHubBeta/main/AnDepZaiHubBeta.lua"))()
 		end,
 	})
 local HubsTab = Window:CreateTab("flee the facility  📜", 4483362458)
