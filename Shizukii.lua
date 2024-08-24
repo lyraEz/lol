@@ -32,15 +32,15 @@ local Window = Rayfield:CreateWindow({
 
 warn("Please Support me i put alot of efforts in this.")
 warn("<3")
-
+ 
+ 
  local HubsTab = Window:CreateTab("Murder Mystery 2 📜", 4483362458) 
- local Button = HubsTab:CreateButton({
+local Button = HubsTab:CreateButton({
 	Name = " Overdrive-H Hub",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/Overdriver-H%20Hub.lua"))()
     end,
  })
- local HubsTab = Window:CreateTab("Murder Mystery 2 📜", 4483362458) 
  local Button = HubsTab:CreateButton({
 	Name = " Symphony Hub",
 	Callback = function()
@@ -144,6 +144,12 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts
 	Name = " Stretch Resolution",
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/ySixxNz/SIXHUB-UNIVERSAL/SixHub-Universal/SixHub-Universal"))()
+    end,
+ })
+local Button = ExpTab:CreateButton({
+	Name = " Hide Fluxus icon",
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/Hide%20fluxus.lua"))()
     end,
  })
 local Button = ExpTab:CreateButton({
