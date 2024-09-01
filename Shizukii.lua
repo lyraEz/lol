@@ -10,14 +10,14 @@ local Window = Rayfield:CreateWindow({
     },
     Discord = {
        Enabled = true,
-       Invite = "yuaN9bG8Mm",
+       Invite = "FA3eVAdtfw",
        RememberJoins = true -- Set this to false to make them join the discord every time they load it up
     },
  })
  Rayfield:Notify({
    Title = "Warning!",
    Content = "Some of these script may crash your game or won't work. Thank you for using the hub",
-   Duration = 2.5,
+   Duration = 1,
    Image = 4483362458,
    Actions = { -- Notification Buttons
       Ignore = {
@@ -388,7 +388,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content
    },
 },
 })
-		setclipboard("https://discord.gg/yuaN9bG8Mm")
+		setclipboard("https://discord.gg/FA3eVAdtfw")
     end,
  })
 local Paragraph = SupportTab:CreateParagraph({Title = "Note", Content = "Invite works now"})
