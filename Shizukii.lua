@@ -102,7 +102,12 @@ local Button = HubsTab:CreateButton({
 			loadstring(game:HttpGet("https://raw.githubusercontent.com/Mc4121ban/trashscript/main/chaotic.lua"))()
 		end,
 	})
-
+local Button = HubsTab:CreateButton({
+		Name = " Haloen V2 Hub",
+		Callback = function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/MjHavin/Haloen-V2-by-mj-and-savvy/main/Hyo"))()
+		end,
+	})
 local Button = HubsTab:CreateButton({
 		Name = "  FFJ V3 Hub",
 		Callback = function()
