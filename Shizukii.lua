@@ -298,7 +298,7 @@ local Button = ExpTab:CreateButton({
  })
 local SupportTab = Window:CreateTab("Support Us!", 4483362458) 
 local Paragraph = SupportTab:CreateParagraph({Title = "Please paste one of these links in you browser", Content = "Follow us on Github or join our server will helps alot!"})
-local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content = "If you want a specific script on Shizukii, ask on our server or in my DM!"})
+local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content = "If you want a specific script on Shizukii, ask on our server or in my dm!"})
 
  local Button = SupportTab:CreateButton({
 	Name = "🖤 Chead.y Dev Github",
@@ -342,3 +342,4 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content
 		setclipboard("https://discord.gg/yuaN9bG8Mm")
     end,
  })
+local Paragraph = SupportTab:CreateParagraph({Title = "Note", Content = "Invite works now"})
