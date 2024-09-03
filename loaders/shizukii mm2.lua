@@ -84,7 +84,7 @@ title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 title.BackgroundTransparency = 1.000
 title.Size = UDim2.new(0, 254, 0, 50)
 title.Font = Enum.Font.SourceSans
-title.Text = "Shizukii mm2 GUI"
+title.Text = "Shizukii Hub"
 title.TextColor3 = Color3.fromRGB(255, 149, 0)
 title.TextSize = 38.000
 
