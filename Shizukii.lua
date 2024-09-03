@@ -53,6 +53,12 @@ local Button = HubsTab:CreateButton({
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/eclios.lua'))()
     end,
  })
+local Button = HubsTab:CreateButton({
+		Name =" Shizukii Hub"
+		Callback =function()
+			loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/shizukii%20mm2.lua'))()
+		end,
+	})
  local Button = HubsTab:CreateButton({
     Name = " Highlight Hub",
     Callback = function()
@@ -366,7 +372,7 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content
    },
 },
 })
-		setclipboard("https://github.com/chead.y")
+		setclipboard("https://github.com/lyraEz")
     end,
  })
 
