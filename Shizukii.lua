@@ -58,7 +58,7 @@ local Button = HubsTab:CreateButton({
 		Callback = function()
 			loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/shizukii%20mm2.lua'))()
 		end,
-	})
+})
  local Button = HubsTab:CreateButton({
     Name = " Highlight Hub",
     Callback = function()
