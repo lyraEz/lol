@@ -6,7 +6,7 @@ local humanoid = character:WaitForChild("Humanoid")
 
 local flickEnabled = true
 local autoJumpEnabled = false
-local flickButton, autoJumpButton, minimizeButton
+local flickButton, autoJumpButton, minimizeButton, showGuiButton
 local dragging, dragStart, startPos
 local guiMinimized = false
 
@@ -74,6 +74,20 @@ minimizeButton.BorderSizePixel = 2
 minimizeButton.Font = Enum.Font.GothamBold
 minimizeButton.TextScaled = true
 minimizeButton.Parent = container
+
+showGuiButton = Instance.new("TextButton")
+showGuiButton.Text = "Show"
+showGuiButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+showGuiButton.Size = UDim2.new(0.1, 0, 0.1, 0)
+showGuiButton.Position = UDim2.new(0.9, 0, 0.05, 0)
+showGuiButton.BackgroundTransparency = 0.3
+showGuiButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+showGuiButton.BorderColor3 = Color3.fromRGB(100, 100, 100)
+showGuiButton.BorderSizePixel = 2
+showGuiButton.Font = Enum.Font.GothamBold
+showGuiButton.TextScaled = true
+showGuiButton.Visible = false
+showGuiButton.Parent = gui
 
 local function createBorderAnimation(button)
     local gradient = Instance.new("UIGradient")
@@ -155,7 +169,7 @@ container.InputBegan:Connect(function(input)
 end)
 
 container.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType.Touch then
         dragInput = input
     end
 end)
@@ -181,15 +195,21 @@ local function onCharacterAdded(character)
 end
 
 player.CharacterAdded:Connect(onCharacterAdded)
-enableAutoJump()
+if player.Character then
+    onCharacterAdded(player.Character)
+end
 
+-- Minimize and show GUI functionality
 minimizeButton.MouseButton1Click:Connect(function()
     guiMinimized = not guiMinimized
-    if guiMinimized then
-        container.Visible = false
-    else
-        container.Visible = true
-    end
+    container.Visible = not guiMinimized
+    showGuiButton.Visible = guiMinimized
 end)
 
---outro dia eu coloco o unlock cam e unlock Zoom
+showGuiButton.MouseButton1Click:Connect(function()
+    guiMinimized = false
+    container.Visible = true
+    showGuiButton.Visible = false
+end)
+
+enableAutoJump()
