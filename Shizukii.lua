@@ -301,6 +301,12 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/darkcheat%20aimbot.lua"))()
     end,
  })
+local Button = HubsTab:CreateButton({
+		Name = " Shizukii Wallhop Hub",
+		Callback = function()
+			loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/Shizukii%20wallhop.lua', true))()
+		end,
+	})
  local Button = ExpTab:CreateButton({
 	Name = " Shizukii Hitbox + Esp",
 	Callback = function()
@@ -345,12 +351,6 @@ local Button = ExpTab:CreateButton({
 })
     end,
  })
-local Button = HubsTab:CreateButton({
-		Name = " Shizukii Wallhop Hub",
-		Callback = function()
-			loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/Shizukii%20wallhop.lua', true))()
-		end,
-	})
 local Button = ExpTab:CreateButton({
 	Name = "🔴 Stretch Resolution",
 	Callback = function()
