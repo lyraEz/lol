@@ -33,7 +33,7 @@ flickButton.TextScaled = true
 flickButton.Parent = container
 
 local autoflickToggle = Instance.new("TextButton")
-autoflickToggle.Text = "AutoFlick: Off"
+autoflickToggle.Text = "Jumpflick: Off"
 autoflickToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoflickToggle.Size = UDim2.new(0.8, 0, 0.2, 0)
 autoflickToggle.Position = UDim2.new(0.1, 0, 0.35, 0)
@@ -101,7 +101,7 @@ flickButton.MouseButton1Click:Connect(flick)
 
 autoflickToggle.MouseButton1Click:Connect(function()
     autoflickEnabled = not autoflickEnabled
-    autoflickToggle.Text = autoflickEnabled and "AutoFlick: On" or "AutoFlick: Off" --autoflick ou jumpflick fiquei em dúvida 
+    autoflickToggle.Text = autoflickEnabled and "Jumpflick: On" or "Jumpflick: Off" --autoflick ou jumpflick fiquei em dúvida 
 end)
 
 wallhopToggle.MouseButton1Click:Connect(function()
