@@ -286,7 +286,6 @@ local Button = HubsTab:CreateButton({
 		end,
 	})
  local ExpTab = Window:CreateTab("Experimental ") 
-local Paragraph = ExpTab:CreateParagraph({Title = "Dev Note", Content = "Experimental features it can crash your game."})
 local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts is universal"})
 
  local Button = ExpTab:CreateButton({
@@ -304,7 +303,7 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts
 local Button = HubsTab:CreateButton({
 		Name = " Shizukii Wallhop Hub",
 		Callback = function()
-			loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/main/loaders/Shizukii%20wallhop.lua', true))()
+			loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/refs/heads/main/loaders/Shizukii%20wallhop.lua'))()
 		end,
 	})
  local Button = ExpTab:CreateButton({
@@ -403,4 +402,3 @@ local Paragraph = SupportTab:CreateParagraph({Title = "Request script ", Content
 		setclipboard("https://discord.gg/FA3eVAdtfw")
     end,
  })
-local Paragraph = SupportTab:CreateParagraph({Title = "Note", Content = "Invite works now"})
