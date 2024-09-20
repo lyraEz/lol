@@ -32,19 +32,6 @@ flickButton.Font = Enum.Font.GothamBold
 flickButton.TextScaled = true
 flickButton.Parent = container
 
-local autoflickToggle = Instance.new("TextButton")
-autoflickToggle.Text = "Jumpflick: Off"
-autoflickToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoflickToggle.Size = UDim2.new(0.8, 0, 0.2, 0)
-autoflickToggle.Position = UDim2.new(0.1, 0, 0.35, 0)
-autoflickToggle.BackgroundTransparency = 0.5
-autoflickToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-autoflickToggle.BorderColor3 = Color3.fromRGB(100, 100, 100)
-autoflickToggle.BorderSizePixel = 2
-autoflickToggle.Font = Enum.Font.GothamBold
-autoflickToggle.TextScaled = true
-autoflickToggle.Parent = container
-
 local wallhopToggle = Instance.new("TextButton")
 wallhopToggle.Text = "Wallhop: Off"
 wallhopToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -85,7 +72,6 @@ showHubButton.TextScaled = true
 showHubButton.Visible = false
 showHubButton.Parent = screenGui
 
-local autoflickEnabled = false
 local wallhopEnabled = false
 
 local function flick()
@@ -96,40 +82,25 @@ local function flick()
     wait(0.05) 
     camera.CFrame = originalCFrame 
 end
--- Já tô escutando vozes
-flickButton.MouseButton1Click:Connect(flick)
 
-autoflickToggle.MouseButton1Click:Connect(function()
-    autoflickEnabled = not autoflickEnabled
-    autoflickToggle.Text = autoflickEnabled and "Jumpflick: On" or "Jumpflick: Off" --autoflick ou jumpflick fiquei em dúvida 
-end)
+flickButton.MouseButton1Click:Connect(flick)
 
 wallhopToggle.MouseButton1Click:Connect(function()
     wallhopEnabled = not wallhopEnabled
     wallhopToggle.Text = wallhopEnabled and "Wallhop: On" or "Wallhop: Off"
 end)
 
-local function onJumpRequest()
-    if autoflickEnabled then
-        flick()
-    end
-end
-
-userInputService.JumpRequest:Connect(onJumpRequest)
-
 local function wallhop()
     while true do
-        wait(0.1) -- nem sei se tá funcionando essa bosta
+        wait(0.1)
         if wallhopEnabled then
             local ray = Ray.new(character.HumanoidRootPart.Position, character.HumanoidRootPart.CFrame.lookVector * 5)
             local hit, position = workspace:FindPartOnRay(ray, character)
 
             if hit then
                 humanoid.Jump = true
-                wait(0.1) -- delay pa nao toma crash
+                wait(0.1)
                 flick()
--- depois arruma aq otario
-
             end
         end
     end
@@ -146,5 +117,4 @@ showHubButton.MouseButton1Click:Connect(function()
     container.Visible = true
     showHubButton.Visible = false
 end)
-
--- Outro dia eu arrumo o wallhop
+-- outro dis eu arrumo o wallhop e coloco o autoflick/jumpflick 
