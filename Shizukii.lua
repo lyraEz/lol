@@ -300,7 +300,7 @@ local Paragraph = ExpTab:CreateParagraph({Title = "Note", Content = "All scripts
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/lyraEz/lol/main/loaders/darkcheat%20aimbot.lua"))()
     end,
  })
-local Button = HubsTab:CreateButton({
+local Button = ExpTab:CreateButton({
 		Name = " Shizukii Wallhop Hub",
 		Callback = function()
 			loadstring(game:HttpGet('https://raw.githubusercontent.com/lyraEz/lol/refs/heads/main/loaders/Shizukii%20wallhop.lua'))()
