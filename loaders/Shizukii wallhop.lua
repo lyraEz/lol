@@ -9,7 +9,7 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 local container = Instance.new("Frame")
-container.Size = UDim2.new(0.2, 0, 0.2, 0)
+container.Size = UDim2.new(0.2, 0, 0.3, 0)
 container.Position = UDim2.new(0.4, 0, 0.4, 0)
 container.BackgroundTransparency = 0.5
 container.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -22,8 +22,8 @@ container.Parent = screenGui
 local flickButton = Instance.new("TextButton")
 flickButton.Text = "Flick"
 flickButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-flickButton.Size = UDim2.new(0.8, 0, 0.2, 0)
-flickButton.Position = UDim2.new(0.1, 0, 0.1, 0)
+flickButton.Size = UDim2.new(0.8, 0, 0.15, 0)
+flickButton.Position = UDim2.new(0.1, 0, 0.05, 0) 
 flickButton.BackgroundTransparency = 0.5
 flickButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 flickButton.BorderColor3 = Color3.fromRGB(100, 100, 100)
@@ -35,8 +35,8 @@ flickButton.Parent = container
 local wallhopToggle = Instance.new("TextButton")
 wallhopToggle.Text = "Wallhop: Off"
 wallhopToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-wallhopToggle.Size = UDim2.new(0.8, 0, 0.2, 0)
-wallhopToggle.Position = UDim2.new(0.1, 0, 0.6, 0)
+wallhopToggle.Size = UDim2.new(0.8, 0, 0.15, 0)
+wallhopToggle.Position = UDim2.new(0.1, 0, 0.25, 0)
 wallhopToggle.BackgroundTransparency = 0.5
 wallhopToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 wallhopToggle.BorderColor3 = Color3.fromRGB(100, 100, 100)
@@ -44,6 +44,40 @@ wallhopToggle.BorderSizePixel = 2
 wallhopToggle.Font = Enum.Font.GothamBold
 wallhopToggle.TextScaled = true
 wallhopToggle.Parent = container
+
+local otherGuiButton = Instance.new("TextButton")
+otherGuiButton.Text = "Shiftlock M"
+otherGuiButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+otherGuiButton.Size = UDim2.new(0.8, 0, 0.15, 0)
+otherGuiButton.Position = UDim2.new(0.1, 0, 0.45, 0)
+otherGuiButton.BackgroundTransparency = 0.5
+otherGuiButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+otherGuiButton.BorderColor3 = Color3.fromRGB(100, 100, 100)
+otherGuiButton.BorderSizePixel = 2
+otherGuiButton.Font = Enum.Font.GothamBold
+otherGuiButton.TextScaled = true
+otherGuiButton.Parent = container
+
+otherGuiButton.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/Unknownproooolucky/Unknown-Hub-X-Universal-Games/main/Universal/Permanent-Shiftlock-V2'))()
+end)
+
+local copyDiscordButton = Instance.new("TextButton")
+copyDiscordButton.Text = "Copy Discord Link"
+copyDiscordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyDiscordButton.Size = UDim2.new(0.2, 0, 0.1, 0) -- no tamanho da minha dick
+copyDiscordButton.Position = UDim2.new(0.8, -25, 0.9, -25)
+copyDiscordButton.BackgroundTransparency = 0.5
+copyDiscordButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+copyDiscordButton.BorderColor3 = Color3.fromRGB(100, 100, 100)
+copyDiscordButton.BorderSizePixel = 2
+copyDiscordButton.Font = Enum.Font.GothamBold
+copyDiscordButton.TextScaled = true
+copyDiscordButton.Parent = container
+
+copyDiscordButton.MouseButton1Click:Connect(function()
+    setclipboard("https://discord.gg/FA3eVAdtfw")
+end)
 
 local minimizeButton = Instance.new("TextButton")
 minimizeButton.Text = "-"
@@ -117,4 +151,5 @@ showHubButton.MouseButton1Click:Connect(function()
     container.Visible = true
     showHubButton.Visible = false
 end)
--- outro dis eu arrumo o wallhop e coloco o autoflick/jumpflick 
+
+-- outro dis eu arrumo o wallhop e coloco o autoflick/jumpflick
