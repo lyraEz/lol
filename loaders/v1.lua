@@ -1,7 +1,5 @@
--- Carregando a biblioteca Orion
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
--- Criando a janela principal
 local Window = OrionLib:MakeWindow({
     Name = "Scripts Loader",
     HidePremium = false,
@@ -9,19 +7,16 @@ local Window = OrionLib:MakeWindow({
     ConfigFolder = "OrionConfigs"
 })
 
--- Criando a aba de scripts
 local ScriptsTab = Window:MakeTab({
     Name = "Scripts",
     Icon = "rbxassetid://4483345998",
     PremiumOnly = false
 })
 
--- Função para carregar scripts
 local function loadScript(url)
     loadstring(game:HttpGet(url, true))()
 end
 
--- Adicionando botões para cada script
 ScriptsTab:AddButton({
     Name = "Universal DarkCheatClient Aimbot",
     Callback = function()
@@ -93,5 +88,4 @@ ScriptsTab:AddButton({
     end
 })
 
--- Inicializando a GUI
 OrionLib:Init()
