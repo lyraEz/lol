@@ -1,91 +1,39 @@
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local WallhopEnabled = true
 
-local Window = OrionLib:MakeWindow({
-    Name = "Scripts Loader",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "OrionConfigs"
-})
+local player = game.Players.LocalPlayer
+local playerGui = player:FindFirstChildOfClass("PlayerGui")
+if not playerGui then return end
 
-local ScriptsTab = Window:MakeTab({
-    Name = "Scripts",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local screenGui = Instance.new("ScreenGui", playerGui)
+screenGui.ResetOnSpawn = false
 
-local function loadScript(url)
-    loadstring(game:HttpGet(url, true))()
-end
+local button = Instance.new("TextButton", screenGui)
+button.Size = UDim2.new(0, 100, 0, 50)
+button.Position = UDim2.new(0.5, -50, 0.8, 0)
+button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Wallhop: ON"
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 20
+button.Draggable = true
+button.Active = true
+button.AutoButtonColor = false
 
-ScriptsTab:AddButton({
-    Name = "Universal DarkCheatClient Aimbot",
-    Callback = function()
-        loadScript("https://scriptblox.com/raw/Universal-Script-Universal-DarkCheatClient-Aimbot-15362")
+button.MouseButton1Click:Connect(function()
+    WallhopEnabled = not WallhopEnabled
+    button.Text = WallhopEnabled and "Wallhop: ON" or "Wallhop: OFF"
+    button.BackgroundColor3 = WallhopEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+end)
+
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if WallhopEnabled then
+        local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            WallhopEnabled = false
+            workspace.CurrentCamera:PanUnits(1)
+            wait(0.03)
+            WallhopEnabled = true
+            workspace.CurrentCamera:PanUnits(-1)
+        end
     end
-})
-
-ScriptsTab:AddButton({
-    Name = "Katers NDS Hub",
-    Callback = function()
-        loadScript("https://rawscripts.net/raw/Natural-Disaster-Survival-Katers-NDS-Hub-19533")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "Seven7 NDS",
-    Callback = function()
-        loadScript("https://rawscripts.net/raw/Natural-Disaster-Survival-Seven7-24001")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "ScriptHub V3 Keyless",
-    Callback = function()
-        loadScript("https://rawscripts.net/raw/Universal-Script-ScriptHub-V3-Best-Mobile-ScriptHub-Keyless-16115")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "Vehicle Fly GUI",
-    Callback = function()
-        loadScript("https://raw.githubusercontent.com/GhostPlayer352/Test4/main/Vehicle%20Fly%20Gui")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "Shizukii",
-    Callback = function()
-        loadScript("https://raw.githubusercontent.com/chead-z/lol/main/Shizukii.lua")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "Permanent Shiftlock V2",
-    Callback = function()
-        loadScript("https://raw.githubusercontent.com/Unknownproooolucky/Unknown-Hub-X-Universal-Games/main/Universal/Permanent-Shiftlock-V2")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "Resolution Loader",
-    Callback = function()
-        loadScript("https://raw.githubusercontent.com/lyraEz/lol/refs/heads/main/loaders/resolution.lua")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "RTX Script",
-    Callback = function()
-        getgenv().RTX_Name = 'rtxnamehere'
-        loadScript("https://pastefy.app/xXkUxA0P/raw")
-    end
-})
-
-ScriptsTab:AddButton({
-    Name = "Shizukii Wallhop",
-    Callback = function()
-        loadScript("https://raw.githubusercontent.com/lyraEz/lol/refs/heads/main/loaders/Shizukii%20wallhop.lua")
-    end
-})
-
-OrionLib:Init()
+end)
