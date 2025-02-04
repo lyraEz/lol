@@ -1,5 +1,5 @@
 getgenv().Resolution = {
-    [".gg/scripters"] = 0.8
+    [".gg/scripters"] = 0.65
 }
 
 local Camera = workspace.CurrentCamera
