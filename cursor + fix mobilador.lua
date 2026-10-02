@@ -13,14 +13,11 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local GUI_NAME = "MOBHUB_CursorFixMobilador"
 local CURSOR_IMAGE = "rbxassetid://2128690040"
 local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
-local DEFAULT_HOLD = 0.30
 
 local cursorSize = DEFAULT_SIZE
-local holdTime = DEFAULT_HOLD
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
 local lockEnabled = false
-local holdToken = 0
 
 local function destroyOld(parent)
     if not parent then return end
@@ -73,8 +70,8 @@ cursor.Parent = gui
 --// HUB
 local panel = Instance.new("Frame")
 panel.Name = "ConfigHub"
-panel.Size = UDim2.fromOffset(350, 390)
-panel.Position = UDim2.new(0.5, -175, 0.5, -195)
+panel.Size = UDim2.fromOffset(350, 345)
+panel.Position = UDim2.new(0.5, -175, 0.5, -172)
 panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
 panel.BackgroundTransparency = 0.13
 panel.BorderSizePixel = 0
@@ -142,13 +139,11 @@ subtitle.TextColor3 = Color3.fromRGB(177, 151, 211)
 
 local sizeText = label("", 82, 13, true)
 local lockText = label("", 136, 13, true)
-local holdText = label("", 190, 13, true)
-local offsetText = label("", 244, 13, true)
+local offsetText = label("", 190, 13, true)
 
 local function refresh()
     sizeText.Text = "Cursor size: " .. cursorSize
     lockText.Text = "Fix Mobilador: " .. (lockEnabled and "TRAVADO" or "LIVRE")
-    holdText.Text = string.format("Tempo para alternar: %.2fs", holdTime)
     offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
 end
@@ -165,23 +160,13 @@ local cursorToggle = button("Cursor ON/OFF", 130, 110, 198, function()
     cursorEnabled = not cursorEnabled
 end)
 
-button("−0.05s", 20, 218, 92, function()
-    holdTime = math.max(0.10, holdTime - 0.05)
-    refresh()
-end)
-button("+0.05s", 120, 218, 92, function()
-    holdTime = math.min(1.50, holdTime + 0.05)
-    refresh()
-end)
+button("X−", 20, 218, 62, function() offsetX -= 1 refresh() end)
+button("X+", 88, 218, 62, function() offsetX += 1 refresh() end)
+button("Y−", 158, 218, 62, function() offsetY -= 1 refresh() end)
+button("Y+", 226, 218, 62, function() offsetY += 1 refresh() end)
 
-button("X−", 20, 272, 62, function() offsetX -= 1 refresh() end)
-button("X+", 88, 272, 62, function() offsetX += 1 refresh() end)
-button("Y−", 158, 272, 62, function() offsetY -= 1 refresh() end)
-button("Y+", 226, 272, 62, function() offsetY += 1 refresh() end)
-
-button("RESETAR CONFIGURAÇÕES", 20, 322, 308, function()
+button("RESETAR CONFIGURAÇÕES", 20, 272, 308, function()
     cursorSize = DEFAULT_SIZE
-    holdTime = DEFAULT_HOLD
     offsetX, offsetY = 0, 0
     cursorEnabled = true
     lockEnabled = false
@@ -189,7 +174,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 322, 308, function()
     refresh()
 end)
 
-local hint = label("Alt ou Ctrl direito • mostrar/esconder", 360, 11, false)
+local hint = label("RightAlt: GUI  •  RightCtrl: trava-mouse", 316, 11, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -216,37 +201,33 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
---// Keybinds: either Alt key OR Right Ctrl toggles only the hub
-local keyDebounce = false
+--// Keybinds
+--// RightAlt alterna somente a GUI. RightControl alterna o trava-mouse.
+local keyDebounce = {}
 UIS.InputBegan:Connect(function(input, processed)
     local key = input.KeyCode
-    if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt or key == Enum.KeyCode.RightControl then
-        if not keyDebounce then
-            keyDebounce = true
-            panel.Visible = not panel.Visible
-        end
+
+    if key == Enum.KeyCode.RightAlt and not keyDebounce[key] then
+        keyDebounce[key] = true
+        panel.Visible = not panel.Visible
         return
     end
 
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        holdToken += 1
-        local token = holdToken
-        task.delay(holdTime, function()
-            if token == holdToken and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-                lockEnabled = not lockEnabled
-                UIS.MouseBehavior = lockEnabled and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
-                refresh()
-            end
+    if key == Enum.KeyCode.RightControl and not keyDebounce[key] then
+        keyDebounce[key] = true
+        lockEnabled = not lockEnabled
+        pcall(function()
+            UIS.MouseBehavior = lockEnabled and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
         end)
+        refresh()
+        return
     end
 end)
 
 UIS.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt or input.KeyCode == Enum.KeyCode.RightControl then
-        keyDebounce = false
-    end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        holdToken += 1
+    local key = input.KeyCode
+    if key == Enum.KeyCode.RightAlt or key == Enum.KeyCode.RightControl then
+        keyDebounce[key] = nil
     end
 end)
 
@@ -271,4 +252,4 @@ connection = RunService.RenderStepped:Connect(function()
 end)
 
 print("[MOBHUB] Dark Lavender Cursor Hub carregado.")
-print("[MOBHUB] Alt ou Ctrl direito = mostrar/esconder GUI.")
+print("[MOBHUB] RightAlt = GUI | RightControl = trava-mouse.")
