@@ -1,5 +1,5 @@
 --// MOBHUB - CURSOR + FIX MOBILADOR
---// Combina cursor personalizado com toggle de MouseBehavior por segurada
+--// Dark Lavender Liquid Glass configuration hub
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -10,54 +10,22 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 --// CONFIG
-local HOLD_TIME = 0.3
 local GUI_NAME = "MOBHUB_CursorFixMobilador"
-local CURSOR_SIZE = 32
 local CURSOR_IMAGE = "rbxassetid://2128690040"
+local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
+local DEFAULT_HOLD = 0.30
 
---// FIX MOBILADOR
-local LockEnabled = false
-local HoldToken = 0
+local cursorSize = DEFAULT_SIZE
+local holdTime = DEFAULT_HOLD
+local offsetX, offsetY = 0, 0
+local cursorEnabled = true
+local lockEnabled = false
+local holdToken = 0
 
-local function ApplyMouseState()
-    UIS.MouseBehavior = LockEnabled
-        and Enum.MouseBehavior.LockCenter
-        or Enum.MouseBehavior.Default
-end
-
-UIS.InputBegan:Connect(function(input)
-    if input.UserInputType ~= Enum.UserInputType.MouseButton2 then
-        return
-    end
-
-    HoldToken += 1
-    local thisHold = HoldToken
-
-    task.delay(HOLD_TIME, function()
-        if thisHold ~= HoldToken then
-            return
-        end
-
-        if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-            LockEnabled = not LockEnabled
-            ApplyMouseState()
-        end
-    end)
-end)
-
-UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        HoldToken += 1
-    end
-end)
-
-ApplyMouseState()
-
---// CURSOR
 local function destroyOld(parent)
     if not parent then return end
-    local old = parent:FindFirstChild(GUI_NAME)
-    if old then old:Destroy() end
+    local oldGui = parent:FindFirstChild(GUI_NAME)
+    if oldGui then oldGui:Destroy() end
 end
 
 pcall(function() destroyOld(PlayerGui) end)
@@ -70,20 +38,7 @@ gui.IgnoreGuiInset = true
 gui.DisplayOrder = 2147483647
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
-local cursor = Instance.new("ImageLabel")
-cursor.Name = "Cursor"
-cursor.BackgroundTransparency = 1
-cursor.BorderSizePixel = 0
-cursor.AnchorPoint = Vector2.new(0, 0)
-cursor.Size = UDim2.fromOffset(CURSOR_SIZE, CURSOR_SIZE)
-cursor.Image = CURSOR_IMAGE
-cursor.ZIndex = 2147483647
-cursor.Active = false
-cursor.Selectable = false
-cursor.Parent = gui
-
 local parented = false
-
 if type(gethui) == "function" then
     local ok, hiddenUi = pcall(gethui)
     if ok and hiddenUi then
@@ -94,21 +49,208 @@ if type(gethui) == "function" then
         end)
     end
 end
-
 if not parented then
     pcall(function()
         gui.Parent = CoreGui
         parented = gui.Parent == CoreGui
     end)
 end
+if not parented then gui.Parent = PlayerGui end
 
-if not parented then
-    gui.Parent = PlayerGui
+--// CURSOR: separate high-Z layer
+local cursor = Instance.new("ImageLabel")
+cursor.Name = "Cursor"
+cursor.BackgroundTransparency = 1
+cursor.BorderSizePixel = 0
+cursor.AnchorPoint = Vector2.new(0, 0)
+cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
+cursor.Image = CURSOR_IMAGE
+cursor.ZIndex = 2147483647
+cursor.Active = false
+cursor.Selectable = false
+cursor.Parent = gui
+
+--// HUB
+local panel = Instance.new("Frame")
+panel.Name = "ConfigHub"
+panel.Size = UDim2.fromOffset(350, 390)
+panel.Position = UDim2.new(0.5, -175, 0.5, -195)
+panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
+panel.BackgroundTransparency = 0.13
+panel.BorderSizePixel = 0
+panel.ZIndex = 1000
+panel.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 18)
+corner.Parent = panel
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(183, 143, 255)
+stroke.Transparency = 0.55
+stroke.Thickness = 1
+stroke.Parent = panel
+
+local gradient = Instance.new("UIGradient")
+gradient.Rotation = 135
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(68, 42, 100)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(31, 22, 47)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 13, 27))
+})
+gradient.Parent = panel
+
+local function label(text, y, size, bold)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Position = UDim2.fromOffset(20, y)
+    l.Size = UDim2.new(1, -40, 0, 28)
+    l.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
+    l.Text = text
+    l.TextColor3 = Color3.fromRGB(238, 228, 255)
+    l.TextSize = size or 13
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.ZIndex = 1002
+    l.Parent = panel
+    return l
 end
 
-pcall(function()
-    UIS.MouseIconEnabled = false
+local function button(text, x, y, w, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.fromOffset(w, 34)
+    b.Position = UDim2.fromOffset(x, y)
+    b.BackgroundColor3 = Color3.fromRGB(87, 57, 126)
+    b.BackgroundTransparency = 0.18
+    b.BorderSizePixel = 0
+    b.Font = Enum.Font.GothamMedium
+    b.Text = text
+    b.TextColor3 = Color3.fromRGB(246, 240, 255)
+    b.TextSize = 13
+    b.ZIndex = 1003
+    b.AutoButtonColor = true
+    b.Parent = panel
+    local bc = Instance.new("UICorner")
+    bc.CornerRadius = UDim.new(0, 9)
+    bc.Parent = b
+    b.MouseButton1Click:Connect(callback)
+    return b
+end
+
+label("MOBHUB", 16, 20, true)
+local subtitle = label("Cursor + Fix Mobilador", 43, 12, false)
+subtitle.TextColor3 = Color3.fromRGB(177, 151, 211)
+
+local sizeText = label("", 82, 13, true)
+local lockText = label("", 136, 13, true)
+local holdText = label("", 190, 13, true)
+local offsetText = label("", 244, 13, true)
+
+local function refresh()
+    sizeText.Text = "Cursor size: " .. cursorSize
+    lockText.Text = "Fix Mobilador: " .. (lockEnabled and "TRAVADO" or "LIVRE")
+    holdText.Text = string.format("Tempo para alternar: %.2fs", holdTime)
+    offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
+    cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
+end
+
+button("−", 20, 110, 46, function()
+    cursorSize = math.clamp(cursorSize - 4, MIN_SIZE, MAX_SIZE)
+    refresh()
 end)
+button("+", 74, 110, 46, function()
+    cursorSize = math.clamp(cursorSize + 4, MIN_SIZE, MAX_SIZE)
+    refresh()
+end)
+local cursorToggle = button("Cursor ON/OFF", 130, 110, 198, function()
+    cursorEnabled = not cursorEnabled
+end)
+
+button("−0.05s", 20, 218, 92, function()
+    holdTime = math.max(0.10, holdTime - 0.05)
+    refresh()
+end)
+button("+0.05s", 120, 218, 92, function()
+    holdTime = math.min(1.50, holdTime + 0.05)
+    refresh()
+end)
+
+button("X−", 20, 272, 62, function() offsetX -= 1 refresh() end)
+button("X+", 88, 272, 62, function() offsetX += 1 refresh() end)
+button("Y−", 158, 272, 62, function() offsetY -= 1 refresh() end)
+button("Y+", 226, 272, 62, function() offsetY += 1 refresh() end)
+
+button("RESETAR CONFIGURAÇÕES", 20, 322, 308, function()
+    cursorSize = DEFAULT_SIZE
+    holdTime = DEFAULT_HOLD
+    offsetX, offsetY = 0, 0
+    cursorEnabled = true
+    lockEnabled = false
+    UIS.MouseBehavior = Enum.MouseBehavior.Default
+    refresh()
+end)
+
+local hint = label("Alt ou Ctrl direito • mostrar/esconder", 360, 11, false)
+hint.TextColor3 = Color3.fromRGB(155, 131, 186)
+hint.TextXAlignment = Enum.TextXAlignment.Center
+
+refresh()
+
+--// Drag
+local dragging, dragStart, startPos = false, nil, nil
+panel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = panel.Position
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        panel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+--// Keybinds: either Alt key OR Right Ctrl toggles only the hub
+local keyDebounce = false
+UIS.InputBegan:Connect(function(input, processed)
+    local key = input.KeyCode
+    if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt or key == Enum.KeyCode.RightControl then
+        if not keyDebounce then
+            keyDebounce = true
+            panel.Visible = not panel.Visible
+        end
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        holdToken += 1
+        local token = holdToken
+        task.delay(holdTime, function()
+            if token == holdToken and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+                lockEnabled = not lockEnabled
+                UIS.MouseBehavior = lockEnabled and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
+                refresh()
+            end
+        end)
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt or input.KeyCode == Enum.KeyCode.RightControl then
+        keyDebounce = false
+    end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        holdToken += 1
+    end
+end)
+
+pcall(function() UIS.MouseIconEnabled = false end)
 
 local connection
 connection = RunService.RenderStepped:Connect(function()
@@ -117,15 +259,16 @@ connection = RunService.RenderStepped:Connect(function()
         return
     end
 
-    if UIS.MouseIconEnabled then
-        pcall(function()
-            UIS.MouseIconEnabled = false
-        end)
+    if cursorEnabled and UIS.MouseEnabled then
+        pcall(function() UIS.MouseIconEnabled = false end)
+        local pos = UIS:GetMouseLocation()
+        cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
+        cursor.Visible = true
+    else
+        cursor.Visible = false
+        if not cursorEnabled then pcall(function() UIS.MouseIconEnabled = true end) end
     end
-
-    local pos = UIS:GetMouseLocation()
-    cursor.Position = UDim2.fromOffset(pos.X, pos.Y)
-    cursor.Visible = UIS.MouseEnabled
 end)
 
-print("[MOBHUB] Cursor + Fix Mobilador carregado.")
+print("[MOBHUB] Dark Lavender Cursor Hub carregado.")
+print("[MOBHUB] Alt ou Ctrl direito = mostrar/esconder GUI.")
