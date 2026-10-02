@@ -13,7 +13,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local HOLD_TIME = 0.3
 local GUI_NAME = "MOBHUB_CursorFixMobilador"
 local CURSOR_SIZE = 32
-local CURSOR_IMAGE = "rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"
+local CURSOR_IMAGE = "rbxassetid://2128690040"
 
 --// FIX MOBILADOR
 local LockEnabled = false
