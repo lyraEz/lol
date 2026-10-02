@@ -21,7 +21,6 @@ local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
 local cursorSize = DEFAULT_SIZE
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
-local lockEnabled = false
 
 local function configSnapshot()
     return {
@@ -188,7 +187,7 @@ local offsetText = label("", 190, 13, true)
 
 local function refresh()
     sizeText.Text = "Cursor size: " .. cursorSize
-    lockText.Text = "Fix Mobilador: " .. (lockEnabled and "TRAVADO" or "LIVRE")
+    lockText.Text = "Fix Mobilador: ORIGINAL (botão direito)"
     offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
 end
@@ -208,22 +207,21 @@ local cursorToggle = button("Cursor ON/OFF", 130, 110, 198, function()
     saveConfig()
 end)
 
-button("X−", 20, 218, 62, function() offsetX -= 1 refresh() end)
-button("X+", 88, 218, 62, function() offsetX += 1 refresh() end)
-button("Y−", 158, 218, 62, function() offsetY -= 1 refresh() end)
-button("Y+", 226, 218, 62, function() offsetY += 1 refresh() end)
+button("X−", 20, 218, 62, function() offsetX -= 1 refresh() saveConfig() end)
+button("X+", 88, 218, 62, function() offsetX += 1 refresh() saveConfig() end)
+button("Y−", 158, 218, 62, function() offsetY -= 1 refresh() saveConfig() end)
+button("Y+", 226, 218, 62, function() offsetY += 1 refresh() saveConfig() end)
 
 button("RESETAR CONFIGURAÇÕES", 20, 272, 308, function()
     cursorSize = DEFAULT_SIZE
     offsetX, offsetY = 0, 0
     cursorEnabled = true
-    lockEnabled = false
     UIS.MouseBehavior = Enum.MouseBehavior.Default
     refresh()
     saveConfig()
 end)
 
-local hint = label("Alt: GUI  •  LeftCtrl: trava-mouse", 316, 11, false)
+local hint = label("Alt: GUI  •  Botão direito: câmera", 316, 11, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -250,55 +248,20 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
---// Keybinds
---// Alt (esquerdo ou direito) alterna a GUI. LeftControl alterna o trava-mouse.
+--// Keybind da interface: Alt esquerdo ou direito
 local keyDebounce = {}
 
--- Alguns jogos só entram corretamente no modo de câmera após receberem
--- o botão direito. O Ctrl esquerdo reproduz esse pulso sem ocupar o RMB.
-local function pulseRightMouse()
-    local ok = false
-
-    if type(mouse2press) == "function" and type(mouse2release) == "function" then
-        ok = pcall(function()
-            mouse2press()
-            task.wait()
-            mouse2release()
-        end)
-    end
-
-    if not ok then
-        pcall(function()
-            local VIM = game:GetService("VirtualInputManager")
-            local p = UIS:GetMouseLocation()
-            VIM:SendMouseButtonEvent(p.X, p.Y, 1, true, game, 0)
-            task.wait()
-            VIM:SendMouseButtonEvent(p.X, p.Y, 1, false, game, 0)
-        end)
-    end
-end
-
-UIS.InputBegan:Connect(function(input, processed)
+UIS.InputBegan:Connect(function(input)
     local key = input.KeyCode
-
     if (key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt) and not keyDebounce[key] then
         keyDebounce[key] = true
         panel.Visible = not panel.Visible
-        return
-    end
-
-    if key == Enum.KeyCode.LeftControl and not keyDebounce[key] then
-        keyDebounce[key] = true
-        lockEnabled = not lockEnabled
-        pulseRightMouse()
-        refresh()
-        return
     end
 end)
 
 UIS.InputEnded:Connect(function(input)
     local key = input.KeyCode
-    if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt or key == Enum.KeyCode.LeftControl then
+    if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt then
         keyDebounce[key] = nil
     end
 end)
@@ -308,30 +271,30 @@ pcall(function() UIS.MouseIconEnabled = false end)
 local connection
 connection = RunService.RenderStepped:Connect(function()
     if not gui.Parent or not cursor.Parent then
-        if connection then connection:Disconnect() end
+        connection:Disconnect()
         return
     end
 
-    -- FIX MOBILADOR: reaplica o estado a cada frame para impedir
-    -- que o jogo reverta MouseBehavior logo depois do toggle.
+    -- FIX MOBILADOR: lógica real do script original.
     if UIS.MouseEnabled then
-        pcall(function()
-            UIS.MouseBehavior = lockEnabled and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
-        end)
+        if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+        else
+            UIS.MouseBehavior = Enum.MouseBehavior.Default
+        end
     end
 
+    -- Cursor: mínimo necessário por frame, sem spam no console.
     if cursorEnabled and UIS.MouseEnabled then
-        pcall(function() UIS.MouseIconEnabled = false end)
+        if UIS.MouseIconEnabled then UIS.MouseIconEnabled = false end
         local pos = UIS:GetMouseLocation()
         cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
         cursor.Visible = true
     else
         cursor.Visible = false
-        if not cursorEnabled then
-            pcall(function() UIS.MouseIconEnabled = true end)
-        end
+        if not cursorEnabled and not UIS.MouseIconEnabled then UIS.MouseIconEnabled = true end
     end
 end)
 
 print("[MOBHUB] Dark Lavender Cursor Hub carregado.")
-print("[MOBHUB] Alt = GUI | LeftControl = trava-mouse.")
+print("[MOBHUB] Alt = GUI | RMB = lógica original do Fix Mobilador.")
