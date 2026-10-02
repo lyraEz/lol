@@ -12,7 +12,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local GUI_NAME = "MOBHUB_PresetCursor"
 local CURSOR_SIZE = 32
-local CURSOR_IMAGE = "rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"
+local CURSOR_IMAGE = "rbxassetid://2128690040"
 
 -- Remove execucoes anteriores para nao duplicar o cursor.
 local function destroyOld(parent)
