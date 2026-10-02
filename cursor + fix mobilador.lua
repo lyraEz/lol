@@ -5,6 +5,10 @@ local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+
+local CONFIG_FILE = "mobhub_cursor_config.json"
+local ENV_KEY = "MOBHUB_CURSOR_CONFIG"
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -18,6 +22,47 @@ local cursorSize = DEFAULT_SIZE
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
 local lockEnabled = false
+
+local function configSnapshot()
+    return {
+        cursorSize = cursorSize,
+        offsetX = offsetX,
+        offsetY = offsetY,
+        cursorEnabled = cursorEnabled
+    }
+end
+
+local function saveConfig()
+    local data = configSnapshot()
+    pcall(function() getgenv()[ENV_KEY] = data end)
+    if type(writefile) == "function" then
+        pcall(function()
+            writefile(CONFIG_FILE, HttpService:JSONEncode(data))
+        end)
+    end
+end
+
+local function loadConfig()
+    local data
+    if type(readfile) == "function" and type(isfile) == "function" then
+        pcall(function()
+            if isfile(CONFIG_FILE) then
+                data = HttpService:JSONDecode(readfile(CONFIG_FILE))
+            end
+        end)
+    end
+    if type(data) ~= "table" then
+        pcall(function() data = getgenv()[ENV_KEY] end)
+    end
+    if type(data) == "table" then
+        cursorSize = math.clamp(tonumber(data.cursorSize) or DEFAULT_SIZE, MIN_SIZE, MAX_SIZE)
+        offsetX = math.floor(tonumber(data.offsetX) or 0)
+        offsetY = math.floor(tonumber(data.offsetY) or 0)
+        if type(data.cursorEnabled) == "boolean" then cursorEnabled = data.cursorEnabled end
+    end
+end
+
+loadConfig()
 
 local function destroyOld(parent)
     if not parent then return end
@@ -151,13 +196,16 @@ end
 button("−", 20, 110, 46, function()
     cursorSize = math.clamp(cursorSize - 4, MIN_SIZE, MAX_SIZE)
     refresh()
+    saveConfig()
 end)
 button("+", 74, 110, 46, function()
     cursorSize = math.clamp(cursorSize + 4, MIN_SIZE, MAX_SIZE)
     refresh()
+    saveConfig()
 end)
 local cursorToggle = button("Cursor ON/OFF", 130, 110, 198, function()
     cursorEnabled = not cursorEnabled
+    saveConfig()
 end)
 
 button("X−", 20, 218, 62, function() offsetX -= 1 refresh() end)
@@ -172,6 +220,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 272, 308, function()
     lockEnabled = false
     UIS.MouseBehavior = Enum.MouseBehavior.Default
     refresh()
+    saveConfig()
 end)
 
 local hint = label("Alt: GUI  •  LeftCtrl: trava-mouse", 316, 11, false)
@@ -205,6 +254,30 @@ end)
 --// Alt (esquerdo ou direito) alterna a GUI. LeftControl alterna o trava-mouse.
 local keyDebounce = {}
 
+-- Alguns jogos só entram corretamente no modo de câmera após receberem
+-- o botão direito. O Ctrl esquerdo reproduz esse pulso sem ocupar o RMB.
+local function pulseRightMouse()
+    local ok = false
+
+    if type(mouse2press) == "function" and type(mouse2release) == "function" then
+        ok = pcall(function()
+            mouse2press()
+            task.wait()
+            mouse2release()
+        end)
+    end
+
+    if not ok then
+        pcall(function()
+            local VIM = game:GetService("VirtualInputManager")
+            local p = UIS:GetMouseLocation()
+            VIM:SendMouseButtonEvent(p.X, p.Y, 1, true, game, 0)
+            task.wait()
+            VIM:SendMouseButtonEvent(p.X, p.Y, 1, false, game, 0)
+        end)
+    end
+end
+
 UIS.InputBegan:Connect(function(input, processed)
     local key = input.KeyCode
 
@@ -217,6 +290,7 @@ UIS.InputBegan:Connect(function(input, processed)
     if key == Enum.KeyCode.LeftControl and not keyDebounce[key] then
         keyDebounce[key] = true
         lockEnabled = not lockEnabled
+        pulseRightMouse()
         refresh()
         return
     end
