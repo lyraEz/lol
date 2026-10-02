@@ -174,7 +174,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 272, 308, function()
     refresh()
 end)
 
-local hint = label("RightAlt: GUI  •  RightCtrl: trava-mouse", 316, 11, false)
+local hint = label("Alt: GUI  •  LeftCtrl: trava-mouse", 316, 11, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -202,23 +202,21 @@ UIS.InputEnded:Connect(function(input)
 end)
 
 --// Keybinds
---// RightAlt alterna somente a GUI. RightControl alterna o trava-mouse.
+--// Alt (esquerdo ou direito) alterna a GUI. LeftControl alterna o trava-mouse.
 local keyDebounce = {}
+
 UIS.InputBegan:Connect(function(input, processed)
     local key = input.KeyCode
 
-    if key == Enum.KeyCode.RightAlt and not keyDebounce[key] then
+    if (key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt) and not keyDebounce[key] then
         keyDebounce[key] = true
         panel.Visible = not panel.Visible
         return
     end
 
-    if key == Enum.KeyCode.RightControl and not keyDebounce[key] then
+    if key == Enum.KeyCode.LeftControl and not keyDebounce[key] then
         keyDebounce[key] = true
         lockEnabled = not lockEnabled
-        pcall(function()
-            UIS.MouseBehavior = lockEnabled and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
-        end)
         refresh()
         return
     end
@@ -226,7 +224,7 @@ end)
 
 UIS.InputEnded:Connect(function(input)
     local key = input.KeyCode
-    if key == Enum.KeyCode.RightAlt or key == Enum.KeyCode.RightControl then
+    if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt or key == Enum.KeyCode.LeftControl then
         keyDebounce[key] = nil
     end
 end)
@@ -240,6 +238,14 @@ connection = RunService.RenderStepped:Connect(function()
         return
     end
 
+    -- FIX MOBILADOR: reaplica o estado a cada frame para impedir
+    -- que o jogo reverta MouseBehavior logo depois do toggle.
+    if UIS.MouseEnabled then
+        pcall(function()
+            UIS.MouseBehavior = lockEnabled and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
+        end)
+    end
+
     if cursorEnabled and UIS.MouseEnabled then
         pcall(function() UIS.MouseIconEnabled = false end)
         local pos = UIS:GetMouseLocation()
@@ -247,9 +253,11 @@ connection = RunService.RenderStepped:Connect(function()
         cursor.Visible = true
     else
         cursor.Visible = false
-        if not cursorEnabled then pcall(function() UIS.MouseIconEnabled = true end) end
+        if not cursorEnabled then
+            pcall(function() UIS.MouseIconEnabled = true end)
+        end
     end
 end)
 
 print("[MOBHUB] Dark Lavender Cursor Hub carregado.")
-print("[MOBHUB] RightAlt = GUI | RightControl = trava-mouse.")
+print("[MOBHUB] Alt = GUI | LeftControl = trava-mouse.")
