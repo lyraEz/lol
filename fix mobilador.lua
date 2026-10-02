@@ -1,20 +1,43 @@
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
--- Configuração: mude para 'true' se o seu jogo for estritamente em primeira pessoa
-local APENAS_PRIMEIRA_PESSOA = false 
+-- Tempo que o botão direito precisa ficar pressionado para alternar o estado
+local HOLD_TIME = 0.3
 
-RunService.RenderStepped:Connect(function()
-    -- Verifica se o dispositivo está reconhecendo o mouse
-    if UserInputService.MouseEnabled then
-        
-        -- Se o jogo for 1ª pessoa ou o jogador estiver segurando o botão direito (girando a câmera)
-        if APENAS_PRIMEIRA_PESSOA or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-        else
-            -- Libera o cursor para clicar em menus/UI quando não estiver girando a câmera
-            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+local LockEnabled = false
+local HoldToken = 0
+
+local function ApplyMouseState()
+    if LockEnabled then
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+    else
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end
+
+UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+    if Input.UserInputType ~= Enum.UserInputType.MouseButton2 then
+        return
+    end
+
+    HoldToken += 1
+    local ThisHold = HoldToken
+
+    task.delay(HOLD_TIME, function()
+        if ThisHold ~= HoldToken then
+            return
         end
-        
+
+        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            LockEnabled = not LockEnabled
+            ApplyMouseState()
+        end
+    end)
+end)
+
+UserInputService.InputEnded:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseButton2 then
+        HoldToken += 1
     end
 end)
+
+ApplyMouseState()
