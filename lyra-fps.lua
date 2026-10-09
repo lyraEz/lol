@@ -10,7 +10,11 @@
 --//      ele volta a simular do ponto em que parou, sem "pop" nem recarga.
 --//   4. Todo o trabalho do script roda com orcamento de tempo por frame,
 --//      sem alocacoes por frame, para nao custar o FPS que ele tenta ganhar.
---//   5. HUD opcional (F7) com FPS, frame time, memoria e ping.
+--//   5. Silencia print/warn de todos os scripts (ou limita por segundo),
+--//      cortando o custo de formatacao, LogService e arquivo de log.
+--//   6. Aplica FFlags sem efeito visual (teto de 240 FPS, telemetria).
+--//   7. HUD opcional (F7) com FPS, frame time, memoria, ping e mensagens
+--//      bloqueadas.
 --//
 --// O que este script NAO faz (de proposito):
 --//   - Nao muda qualidade grafica, sombras, texturas, iluminacao, terreno,
@@ -74,8 +78,40 @@ local CONFIG = {
     HUD_START_VISIBLE = false,
     HUD_REFRESH = 0.5,
 
-    -- Mensagens no console (F9).
+    -- Console (F9) de todos os scripts, inclusive do jogo:
+    --   "silence" -> print/warn viram no-op (nada e formatado nem gravado)
+    --   "limit"   -> deixa passar ate CONSOLE_LIMIT_PER_SEC mensagens/s
+    --   "off"     -> nao mexe no console
+    -- Erros (error/falhas de script) NAO sao bloqueados: error() controla
+    -- o fluxo dos scripts e bloquea-lo quebraria a logica do jogo.
+    CONSOLE_MODE = "silence",
+    CONSOLE_LIMIT_PER_SEC = 20,
+
+    -- FFlags sem efeito visual (ver lista FFLAGS abaixo).
+    APPLY_FFLAGS = true,
+
+    -- Mensagens do proprio lyra-fps no console (passam mesmo com o
+    -- console silenciado).
     VERBOSE = true,
+}
+
+-- FFlags aplicadas em tempo de execucao. Somente flags que nao mudam
+-- nada na imagem nem na logica do jogo. Flags graficas (sombras,
+-- texturas, grama, pos-processamento, MSAA etc.) ficam de fora de
+-- proposito. Flags que nao existirem na versao atual do Roblox sao
+-- ignoradas e listadas no console.
+local FFLAGS = {
+    -- Remove o teto interno de 240 FPS do agendador.
+    { "FFlagTaskSchedulerLimitTargetFpsTo2402", "False" },
+
+    -- Telemetria: coleta e envio de metricas internas do cliente.
+    { "FFlagDebugDisableTelemetryEphemeralCounter", "True" },
+    { "FFlagDebugDisableTelemetryEphemeralStat", "True" },
+    { "FFlagDebugDisableTelemetryEventIngest", "True" },
+    { "FFlagDebugDisableTelemetryPoint", "True" },
+    { "FFlagDebugDisableTelemetryV2Counter", "True" },
+    { "FFlagDebugDisableTelemetryV2Event", "True" },
+    { "FFlagDebugDisableTelemetryV2Stat", "True" },
 }
 
 --// =====================================================================
@@ -109,14 +145,19 @@ if type(genv.LyraFPS) == "table" and type(genv.LyraFPS.Stop) == "function" then
     pcall(genv.LyraFPS.Stop)
 end
 
+-- Saida propria do script. Quando o console e silenciado, estas
+-- referencias passam a apontar para as funcoes originais.
+local outPrint = print
+local outWarn = warn
+
 local function log(...)
     if CONFIG.VERBOSE then
-        print("[lyra-fps]", ...)
+        outPrint("[lyra-fps]", ...)
     end
 end
 
 local function warnLog(...)
-    warn("[lyra-fps]", ...)
+    outWarn("[lyra-fps]", ...)
 end
 
 --// =====================================================================
@@ -144,6 +185,9 @@ local Caps = {
     getfflag = fn("getfflag"),
     gethui = fn("gethui"),
     isrbxactive = fn("isrbxactive") or fn("iswindowactive"),
+    hookfunction = fn("hookfunction") or fn("replaceclosure"),
+    restorefunction = fn("restorefunction"),
+    newcclosure = fn("newcclosure"),
 }
 
 --// =====================================================================
@@ -243,6 +287,142 @@ function FpsCap.Restore()
     if FpsCap.original then
         FpsCap.Set(FpsCap.original)
     end
+end
+
+--// =====================================================================
+--// MODULO: FFLAGS
+--// =====================================================================
+
+local Flags = {
+    applied = {},   -- { {name, original} }
+    failed = {},
+}
+
+function Flags.Apply()
+    if not Caps.setfflag then
+        return
+    end
+    for _, entry in ipairs(FFLAGS) do
+        local name, value = entry[1], entry[2]
+        local original
+        if Caps.getfflag then
+            local ok, current = pcall(Caps.getfflag, name)
+            if ok and current ~= nil then
+                original = tostring(current)
+            end
+        end
+        local ok, result = pcall(Caps.setfflag, name, value)
+        if ok and result ~= false then
+            Flags.applied[#Flags.applied + 1] = { name, original }
+        else
+            Flags.failed[#Flags.failed + 1] = name
+        end
+    end
+end
+
+function Flags.Restore()
+    if not Caps.setfflag then
+        return
+    end
+    for _, entry in ipairs(Flags.applied) do
+        if entry[2] ~= nil then
+            pcall(Caps.setfflag, entry[1], entry[2])
+        end
+    end
+    table.clear(Flags.applied)
+    table.clear(Flags.failed)
+end
+
+--// =====================================================================
+--// MODULO: CONSOLE
+--// =====================================================================
+--//
+--// print/warn de qualquer script passam por formatacao de texto, pelo
+--// LogService, pelo Developer Console e pelo arquivo de log do cliente.
+--// Jogos que fazem print a cada frame (ou varios scripts ao mesmo tempo)
+--// pagam esse custo o tempo todo. Aqui print e warn sao trocados por uma
+--// funcao vazia (ou limitada por segundo). Como print e warn nao retornam
+--// nada, nenhuma logica de jogo depende do resultado delas.
+
+local Console = {
+    hooks = {},      -- { {target, original} }
+    suppressed = 0,
+    windowStart = 0,
+    windowCount = 0,
+}
+
+local function gate(box)
+    if CONFIG.CONSOLE_MODE == "limit" then
+        local limit = CONFIG.CONSOLE_LIMIT_PER_SEC
+        return function(...)
+            local now = osClock()
+            if now - Console.windowStart >= 1 then
+                Console.windowStart = now
+                Console.windowCount = 0
+            end
+            if Console.windowCount < limit then
+                Console.windowCount += 1
+                return box.original(...)
+            end
+            Console.suppressed += 1
+        end
+    end
+    return function()
+        Console.suppressed += 1
+    end
+end
+
+local function hookOutput(target)
+    local box = {}
+    local replacement = gate(box)
+    if Caps.newcclosure then
+        local ok, wrapped = pcall(Caps.newcclosure, replacement)
+        if ok and type(wrapped) == "function" then
+            replacement = wrapped
+        end
+    end
+    local ok, original = pcall(Caps.hookfunction, target, replacement)
+    if not ok or type(original) ~= "function" then
+        return nil
+    end
+    box.original = original
+    Console.hooks[#Console.hooks + 1] = { target, original }
+    return original
+end
+
+function Console.Init()
+    local mode = CONFIG.CONSOLE_MODE
+    if mode ~= "silence" and mode ~= "limit" then
+        return false
+    end
+    if not Caps.hookfunction then
+        return false
+    end
+    local originalPrint = hookOutput(print)
+    local originalWarn = hookOutput(warn)
+    if originalPrint then
+        outPrint = originalPrint
+    end
+    if originalWarn then
+        outWarn = originalWarn
+    end
+    return originalPrint ~= nil or originalWarn ~= nil
+end
+
+function Console.Restore()
+    for i = #Console.hooks, 1, -1 do
+        local target, original = Console.hooks[i][1], Console.hooks[i][2]
+        local restored = false
+        if Caps.restorefunction then
+            restored = pcall(Caps.restorefunction, target)
+        end
+        if not restored then
+            pcall(Caps.hookfunction, target, original)
+        end
+        Console.hooks[i] = nil
+    end
+    outPrint = print
+    outWarn = warn
 end
 
 --// =====================================================================
@@ -793,7 +973,7 @@ function Hud.Build()
     label.Name = "Stats"
     label.AnchorPoint = Vector2.new(1, 0)
     label.Position = UDim2.new(1, -10, 0, 10)
-    label.Size = UDim2.fromOffset(210, 92)
+    label.Size = UDim2.fromOffset(210, 110)
     label.BackgroundColor3 = Color3.fromRGB(18, 16, 26)
     label.BackgroundTransparency = 0.25
     label.BorderSizePixel = 0
@@ -840,13 +1020,14 @@ function Hud.Refresh()
     local mem = Stats:GetTotalMemoryUsageMb()
     local ping = readPing()
     Hud.label.Text = string.format(
-        "LYRA-FPS\nFPS: %d\nPior frame: %.1f ms\nMemoria: %d MB\nPing: %s\nEfeitos congelados: %d/%d",
+        "LYRA-FPS\nFPS: %d\nPior frame: %.1f ms\nMemoria: %d MB\nPing: %s\nEfeitos congelados: %d/%d\nMsgs bloqueadas: %d",
         mathFloor(Meter.fps + 0.5),
         Meter.worstDt * 1000,
         mathFloor(mem),
         ping and string.format("%d ms", mathFloor(ping + 0.5)) or "-",
         Sleeper.sleepingCount,
-        #Sleeper.list
+        #Sleeper.list,
+        Console.suppressed
     )
 end
 
@@ -904,6 +1085,8 @@ local function stop()
     Sleeper.Restore()
     Focus.Restore()
     FpsCap.Restore()
+    Flags.Restore()
+    Console.Restore()
     if genv.LyraFPS and genv.LyraFPS.Stop == stop then
         genv.LyraFPS = nil
     end
@@ -911,8 +1094,14 @@ local function stop()
 end
 
 local function start()
+    if CONFIG.APPLY_FFLAGS then
+        Flags.Apply()
+    end
+
     FpsCap.Init()
     local capped = FpsCap.Set(CONFIG.FPS_CAP)
+
+    local consoleHooked = Console.Init()
 
     Focus.Init()
     if Caps.isrbxactive then
@@ -942,6 +1131,9 @@ local function start()
                 sleepingEffects = Sleeper.sleepingCount,
                 fpsCapMethod = FpsCap.method,
                 fpsCap = FpsCap.current,
+                suppressedConsoleMessages = Console.suppressed,
+                fflagsApplied = #Flags.applied,
+                fflagsFailed = table.clone(Flags.failed),
             }
         end,
     }
@@ -954,6 +1146,25 @@ local function start()
         warnLog("executor sem setfpscap/setfflag; use o limite de FPS do menu do Roblox")
     end
     log("congelamento de efeitos:", CONFIG.EFFECT_SLEEPER and "ativo" or "desligado")
+    if CONFIG.CONSOLE_MODE ~= "off" then
+        if consoleHooked then
+            log("console:", CONFIG.CONSOLE_MODE == "limit"
+                and string.format("limitado a %d msg/s", CONFIG.CONSOLE_LIMIT_PER_SEC)
+                or "silenciado (print/warn)")
+        else
+            warnLog("executor sem hookfunction; console nao foi silenciado")
+        end
+    end
+    if CONFIG.APPLY_FFLAGS then
+        if not Caps.setfflag then
+            warnLog("executor sem setfflag; FFlags nao aplicadas")
+        else
+            log(string.format("FFlags aplicadas: %d/%d", #Flags.applied, #FFLAGS))
+            if #Flags.failed > 0 then
+                log("FFlags indisponiveis nesta versao:", table.concat(Flags.failed, ", "))
+            end
+        end
+    end
     log("HUD:", CONFIG.HUD_KEY.Name, "| parar: getgenv().LyraFPS.Stop()")
 end
 
