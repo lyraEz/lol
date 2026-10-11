@@ -125,6 +125,7 @@ panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
 panel.BackgroundTransparency = 0.13
 panel.BorderSizePixel = 0
 panel.ZIndex = 1000
+panel.Visible = false -- Inicia com a GUI escondida; Alt alterna a visibilidade
 panel.Parent = gui
 
 local corner = Instance.new("UICorner")
