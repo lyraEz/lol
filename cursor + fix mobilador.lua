@@ -1,5 +1,3 @@
---// MOBHUB - CURSOR + FIX MOBILADOR
---// Dark Lavender Liquid Glass configuration hub
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -13,7 +11,6 @@ local ENV_KEY = "MOBHUB_CURSOR_CONFIG"
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
---// CONFIG
 local GUI_NAME = "MOBHUB_CursorFixMobilador"
 local CURSOR_IMAGE = "rbxassetid://2128690040"
 local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
@@ -21,8 +18,7 @@ local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
 local cursorSize = DEFAULT_SIZE
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
--- "PC": trava onde o mouse está (LockCurrentPosition), igual ao Roblox no PC.
--- "CENTRO": lógica antiga (LockCenter), caso o modo PC não tire o limite da tela.
+ -- O modo PC prende o mouse onde ele está. CENTRO fica como alternativa.
 local lockMode = "PC"
 
 local function configSnapshot()
@@ -103,7 +99,6 @@ if not parented then
 end
 if not parented then gui.Parent = PlayerGui end
 
---// CURSOR: separate high-Z layer
 local cursor = Instance.new("ImageLabel")
 cursor.Name = "Cursor"
 cursor.BackgroundTransparency = 1
@@ -116,7 +111,6 @@ cursor.Active = false
 cursor.Selectable = false
 cursor.Parent = gui
 
---// HUB
 local panel = Instance.new("Frame")
 panel.Name = "ConfigHub"
 panel.Size = UDim2.fromOffset(350, 385)
@@ -125,7 +119,7 @@ panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
 panel.BackgroundTransparency = 0.13
 panel.BorderSizePixel = 0
 panel.ZIndex = 1000
-panel.Visible = false -- Inicia com a GUI escondida; Alt alterna a visibilidade
+panel.Visible = false
 panel.Parent = gui
 
 local corner = Instance.new("UICorner")
@@ -244,7 +238,6 @@ hint.TextXAlignment = Enum.TextXAlignment.Center
 
 refresh()
 
---// Drag
 local dragging, dragStart, startPos = false, nil, nil
 panel.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -265,31 +258,24 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
---// Keybind da interface: Alt esquerdo ou direito
 local keyDebounce = {}
 
---// FIX MOBILADOR (comportamento de PC)
--- No PC o Roblox trava o mouse NO LUGAR onde ele está enquanto o botão direito
--- fica segurado, e a câmera gira sem limite de tela. Ao soltar, o mouse continua
--- no mesmo ponto. Clique direito em cima de uma GUI não gira a câmera, e
--- shift lock / primeira pessoa continuam sendo controlados pelo jogo.
-local rmbActive = false      -- botão direito está girando a câmera
-local rmbBlocked = false     -- botão direito começou em cima de uma GUI
-local rmbOverride = false    -- este script está controlando o MouseBehavior
-local savedMousePos = nil    -- onde o mouse estava ao apertar
+local rmbActive = false
+local rmbBlocked = false
+local rmbOverride = false
+local savedMousePos = nil
 
 local function startRotate()
     rmbActive = true
     savedMousePos = UIS:GetMouseLocation()
-    -- Shift lock / primeira pessoa já usam LockCenter: deixa o jogo controlar.
+    -- Shift lock e primeira pessoa já cuidam da câmera, não força outro bloqueio.
     rmbOverride = UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter
 end
 
 local function stopRotate()
     if rmbOverride then
         UIS.MouseBehavior = Enum.MouseBehavior.Default
-        -- No modo CENTRO o mouse real fica no meio; devolve para onde estava
-        -- quando o executor tiver suporte.
+        -- No modo CENTRO tenta devolver o mouse à posição anterior.
         if lockMode == "CENTRO" and savedMousePos and type(mousemoveabs) == "function" then
             local pos = savedMousePos
             pcall(mousemoveabs, pos.X, pos.Y)
@@ -334,9 +320,8 @@ connection = RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- FIX MOBILADOR: o botão é lido por frame (como no original) para nunca
-    -- perder o soltar; o InputBegan só decide se o clique foi numa GUI.
     if UIS.MouseEnabled then
+        -- Confere o RMB por frame para não perder a soltura do botão.
         local pressed = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
         if pressed then
             if not rmbActive and not rmbBlocked then
@@ -349,7 +334,6 @@ connection = RunService.RenderStepped:Connect(function()
         else
             if rmbActive then stopRotate() end
             rmbBlocked = false
-            -- Destrava se algo deixou o mouse preso sem o botão segurado.
             if UIS.MouseBehavior == Enum.MouseBehavior.LockCurrentPosition then
                 UIS.MouseBehavior = Enum.MouseBehavior.Default
             end
@@ -358,10 +342,9 @@ connection = RunService.RenderStepped:Connect(function()
         stopRotate()
     end
 
-    -- Cursor: mínimo necessário por frame, sem spam no console.
     if cursorEnabled and UIS.MouseEnabled then
         if UIS.MouseIconEnabled then UIS.MouseIconEnabled = false end
-        -- Enquanto gira a câmera o cursor fica parado onde estava, igual ao PC.
+        -- Evita o cursor visual saltar enquanto a câmera gira.
         local pos = (rmbActive and rmbOverride and savedMousePos) or UIS:GetMouseLocation()
         cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
         cursor.Visible = true
