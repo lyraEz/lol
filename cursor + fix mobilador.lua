@@ -1,5 +1,3 @@
---// MOBHUB - CURSOR + FIX MOBILADOR
---// Dark Lavender Liquid Glass configuration hub
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -13,7 +11,6 @@ local ENV_KEY = "MOBHUB_CURSOR_CONFIG"
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
---// CONFIG
 local GUI_NAME = "MOBHUB_CursorFixMobilador"
 local CURSOR_IMAGE = "rbxassetid://2128690040"
 local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
@@ -21,13 +18,16 @@ local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
 local cursorSize = DEFAULT_SIZE
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
+ -- O modo PC prende o mouse onde ele está. CENTRO fica como alternativa.
+local lockMode = "PC"
 
 local function configSnapshot()
     return {
         cursorSize = cursorSize,
         offsetX = offsetX,
         offsetY = offsetY,
-        cursorEnabled = cursorEnabled
+        cursorEnabled = cursorEnabled,
+        lockMode = lockMode
     }
 end
 
@@ -58,6 +58,7 @@ local function loadConfig()
         offsetX = math.floor(tonumber(data.offsetX) or 0)
         offsetY = math.floor(tonumber(data.offsetY) or 0)
         if type(data.cursorEnabled) == "boolean" then cursorEnabled = data.cursorEnabled end
+        if data.lockMode == "PC" or data.lockMode == "CENTRO" then lockMode = data.lockMode end
     end
 end
 
@@ -98,7 +99,6 @@ if not parented then
 end
 if not parented then gui.Parent = PlayerGui end
 
---// CURSOR: separate high-Z layer
 local cursor = Instance.new("ImageLabel")
 cursor.Name = "Cursor"
 cursor.BackgroundTransparency = 1
@@ -111,15 +111,15 @@ cursor.Active = false
 cursor.Selectable = false
 cursor.Parent = gui
 
---// HUB
 local panel = Instance.new("Frame")
 panel.Name = "ConfigHub"
-panel.Size = UDim2.fromOffset(350, 345)
-panel.Position = UDim2.new(0.5, -175, 0.5, -172)
+panel.Size = UDim2.fromOffset(350, 385)
+panel.Position = UDim2.new(0.5, -175, 0.5, -192)
 panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
 panel.BackgroundTransparency = 0.13
 panel.BorderSizePixel = 0
 panel.ZIndex = 1000
+panel.Visible = false
 panel.Parent = gui
 
 local corner = Instance.new("UICorner")
@@ -183,13 +183,17 @@ subtitle.TextColor3 = Color3.fromRGB(177, 151, 211)
 
 local sizeText = label("", 82, 13, true)
 local lockText = label("", 136, 13, true)
-local offsetText = label("", 190, 13, true)
+local offsetText = label("", 210, 13, true)
+local modeButton
 
 local function refresh()
     sizeText.Text = "Cursor size: " .. cursorSize
-    lockText.Text = "Fix Mobilador: ORIGINAL (botão direito)"
+    lockText.Text = "Fix Mobilador (botão direito): " .. (lockMode == "PC" and "igual PC" or "centro")
     offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
+    if modeButton then
+        modeButton.Text = lockMode == "PC" and "Modo: PC (prende onde está)" or "Modo: CENTRO (antigo)"
+    end
 end
 
 button("−", 20, 110, 46, function()
@@ -207,27 +211,33 @@ local cursorToggle = button("Cursor ON/OFF", 130, 110, 198, function()
     saveConfig()
 end)
 
-button("X−", 20, 218, 62, function() offsetX -= 1 refresh() saveConfig() end)
-button("X+", 88, 218, 62, function() offsetX += 1 refresh() saveConfig() end)
-button("Y−", 158, 218, 62, function() offsetY -= 1 refresh() saveConfig() end)
-button("Y+", 226, 218, 62, function() offsetY += 1 refresh() saveConfig() end)
+modeButton = button("", 20, 164, 308, function()
+    lockMode = lockMode == "PC" and "CENTRO" or "PC"
+    refresh()
+    saveConfig()
+end)
 
-button("RESETAR CONFIGURAÇÕES", 20, 272, 308, function()
+button("X−", 20, 238, 62, function() offsetX -= 1 refresh() saveConfig() end)
+button("X+", 88, 238, 62, function() offsetX += 1 refresh() saveConfig() end)
+button("Y−", 158, 238, 62, function() offsetY -= 1 refresh() saveConfig() end)
+button("Y+", 226, 238, 62, function() offsetY += 1 refresh() saveConfig() end)
+
+button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
     cursorSize = DEFAULT_SIZE
     offsetX, offsetY = 0, 0
     cursorEnabled = true
+    lockMode = "PC"
     UIS.MouseBehavior = Enum.MouseBehavior.Default
     refresh()
     saveConfig()
 end)
 
-local hint = label("Alt: GUI  •  Botão direito: câmera", 316, 11, false)
+local hint = label("Alt: GUI  •  Segure botão direito: câmera", 340, 11, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
 refresh()
 
---// Drag
 local dragging, dragStart, startPos = false, nil, nil
 panel.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -248,10 +258,45 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
---// Keybind da interface: Alt esquerdo ou direito
 local keyDebounce = {}
 
-UIS.InputBegan:Connect(function(input)
+local rmbActive = false
+local rmbBlocked = false
+local rmbOverride = false
+local savedMousePos = nil
+
+local function startRotate()
+    rmbActive = true
+    savedMousePos = UIS:GetMouseLocation()
+    -- Shift lock e primeira pessoa já cuidam da câmera, não força outro bloqueio.
+    rmbOverride = UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter
+end
+
+local function stopRotate()
+    if rmbOverride then
+        UIS.MouseBehavior = Enum.MouseBehavior.Default
+        -- No modo CENTRO tenta devolver o mouse à posição anterior.
+        if lockMode == "CENTRO" and savedMousePos and type(mousemoveabs) == "function" then
+            local pos = savedMousePos
+            pcall(mousemoveabs, pos.X, pos.Y)
+        end
+    end
+    rmbActive = false
+    rmbOverride = false
+    savedMousePos = nil
+end
+
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if not gui.Parent then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if gameProcessed then
+            rmbBlocked = true
+        elseif not rmbActive and UIS.MouseEnabled then
+            startRotate()
+        end
+        return
+    end
+
     local key = input.KeyCode
     if (key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt) and not keyDebounce[key] then
         keyDebounce[key] = true
@@ -275,19 +320,32 @@ connection = RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- FIX MOBILADOR: lógica real do script original.
     if UIS.MouseEnabled then
-        if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-            UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+        -- Confere o RMB por frame para não perder a soltura do botão.
+        local pressed = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+        if pressed then
+            if not rmbActive and not rmbBlocked then
+                startRotate()
+            end
+            if rmbActive and rmbOverride then
+                local wanted = lockMode == "PC" and Enum.MouseBehavior.LockCurrentPosition or Enum.MouseBehavior.LockCenter
+                if UIS.MouseBehavior ~= wanted then UIS.MouseBehavior = wanted end
+            end
         else
-            UIS.MouseBehavior = Enum.MouseBehavior.Default
+            if rmbActive then stopRotate() end
+            rmbBlocked = false
+            if UIS.MouseBehavior == Enum.MouseBehavior.LockCurrentPosition then
+                UIS.MouseBehavior = Enum.MouseBehavior.Default
+            end
         end
+    elseif rmbActive then
+        stopRotate()
     end
 
-    -- Cursor: mínimo necessário por frame, sem spam no console.
     if cursorEnabled and UIS.MouseEnabled then
         if UIS.MouseIconEnabled then UIS.MouseIconEnabled = false end
-        local pos = UIS:GetMouseLocation()
+        -- Evita o cursor visual saltar enquanto a câmera gira.
+        local pos = (rmbActive and rmbOverride and savedMousePos) or UIS:GetMouseLocation()
         cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
         cursor.Visible = true
     else
@@ -297,4 +355,4 @@ connection = RunService.RenderStepped:Connect(function()
 end)
 
 print("[MOBHUB] Dark Lavender Cursor Hub carregado.")
-print("[MOBHUB] Alt = GUI | RMB = lógica original do Fix Mobilador.")
+print("[MOBHUB] Alt = GUI | Segure RMB = câmera (modo " .. lockMode .. ").")
