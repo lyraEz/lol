@@ -201,14 +201,21 @@ local sizeText = label("", 82, 13, true)
 local lockText = label("", 136, 13, true)
 local offsetText = label("", 210, 13, true)
 local modeButton
+local hint
+local resetLockState
 
 local function refresh()
     sizeText.Text = "Cursor size: " .. cursorSize
-    lockText.Text = "Fix Mobilador (botão direito): " .. (lockMode == "PC" and "igual PC" or "centro")
+    lockText.Text = "Fix Mobilador: " .. (lockMode == "PC" and "segurar RMB" or "RMB alterna o centro")
     offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
     if modeButton then
-        modeButton.Text = lockMode == "PC" and "Modo: PC (prende onde está)" or "Modo: CENTRO (antigo)"
+        modeButton.Text = lockMode == "PC" and "Modo: PC (segurar)" or "Modo: CENTRO (clique ON/OFF)"
+    end
+    if hint then
+        hint.Text = lockMode == "PC"
+            and "Alt: GUI  •  Segure RMB: câmera"
+            or "Alt: GUI  •  RMB: travar / liberar centro"
     end
 end
 
@@ -228,6 +235,7 @@ local cursorToggle = button("Cursor ON/OFF", 130, 110, 198, function()
 end)
 
 modeButton = button("", 20, 164, 308, function()
+    if resetLockState then resetLockState() end
     lockMode = lockMode == "PC" and "CENTRO" or "PC"
     refresh()
     saveConfig()
@@ -239,6 +247,7 @@ button("Y−", 158, 238, 62, function() offsetY -= 1 refresh() saveConfig() end)
 button("Y+", 226, 238, 62, function() offsetY += 1 refresh() saveConfig() end)
 
 button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
+    if resetLockState then resetLockState() end
     cursorSize = DEFAULT_SIZE
     offsetX, offsetY = 0, 0
     cursorEnabled = true
@@ -248,7 +257,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
     saveConfig()
 end)
 
-local hint = label("Alt: GUI  •  Segure botão direito: câmera", 340, 11, false)
+hint = label("Alt: GUI  •  Segure RMB: câmera", 340, 11, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -274,77 +283,142 @@ connect(UIS.InputEnded, function(input)
     end
 end)
 
+-- Máquina de estados: PC = botão pressionado; CENTRO = clique alterna.
 local keyDebounce = {}
-local rmbActive, rmbBlocked, rmbOverride = false, false, false
+local pcHeld, centerEnabled = false, false
+local rmbDown, rmbBlocked = false, false
 local savedMousePos = nil
-local lockedByScript, lockedMode = false, nil
-local rotationToken, pollElapsed = 0, 0
-local POLL_INTERVAL, UNLOCK_DELAY = 0.15, 0.12
+local ownedMode = nil
+local generation = 0
+local centerSyncElapsed = 0
+local CENTER_SYNC_INTERVAL = 0.65
+local POST_INPUT_DELAY = 0.12
 
-local function rightMouseDown()
-    local ok, pressed = pcall(function()
-        return UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-    end)
-    return ok and pressed
-end
-
-local function applyLock()
-    if not session.alive or not rmbActive or not rmbOverride or not rightMouseDown() then return end
-    local wanted = lockMode == "PC"
-        and Enum.MouseBehavior.LockCurrentPosition or Enum.MouseBehavior.LockCenter
-
-    -- Apenas muda o lock em caso de transição ou correção, nunca a cada frame.
-    if UIS.MouseBehavior ~= wanted then
-        local ok = pcall(function() UIS.MouseBehavior = wanted end)
-        if not ok then return end
+local function ownMouseLock(mode)
+    if not session.alive or not UIS.MouseEnabled then return false end
+    if UIS.MouseBehavior == mode then
+        -- Não assumir propriedade de um bloqueio que já era do jogo.
+        return true
     end
-    lockedByScript = true
-    lockedMode = wanted
+    local ok = pcall(function()
+        UIS.MouseBehavior = mode
+    end)
+    if ok then ownedMode = mode end
+    return ok
 end
 
-local function startRotate()
-    if rmbActive or not UIS.MouseEnabled then return end
-    rmbActive = true
-    rotationToken += 1
-    savedMousePos = UIS:GetMouseLocation()
-    -- Shift Lock / primeira pessoa continuam sob controle do próprio jogo.
-    rmbOverride = UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter
-    if rmbOverride then
-        local token = rotationToken
-        task.defer(function()
-            if session.alive and rmbActive and token == rotationToken then applyLock() end
+local function releaseOwnedLock()
+    local previouslyOwned = ownedMode
+    ownedMode = nil
+    if not previouslyOwned then return end
+    local current = UIS.MouseBehavior
+    if current == previouslyOwned or current == Enum.MouseBehavior.LockCurrentPosition then
+        pcall(function()
+            UIS.MouseBehavior = Enum.MouseBehavior.Default
         end)
     end
 end
 
-local function stopRotate()
-    if not rmbActive then return end
-    rmbActive = false
-    rmbOverride = false
-    savedMousePos = nil
-    rotationToken += 1
-    local token, previousMode = rotationToken, lockedMode
-    local shouldUnlock = lockedByScript
-    lockedByScript, lockedMode = false, nil
+local function requestRelease()
+    generation += 1
+    local token = generation
+    task.delay(POST_INPUT_DELAY, function()
+        if not session.alive or generation ~= token or rmbDown then return end
+        if centerEnabled or pcHeld then return end
+        releaseOwnedLock()
+    end)
+end
 
-    -- Soltar e mudar MouseBehavior no mesmo callback do input pode colidir
-    -- com o código nativo do Android/Roblox. Libera após o evento terminar.
-    if shouldUnlock then
-        task.delay(UNLOCK_DELAY, function()
-            if token ~= rotationToken or rmbActive or rightMouseDown() then return end
-            if UIS.MouseBehavior == previousMode then
-                pcall(function() UIS.MouseBehavior = Enum.MouseBehavior.Default end)
+local function finishPC()
+    if not pcHeld then return end
+    pcHeld = false
+    savedMousePos = nil
+    requestRelease()
+end
+
+local function onMouseDown(gameProcessed)
+    if rmbDown then return end -- debouncing de InputBegan duplicado
+    rmbDown = true
+    rmbBlocked = gameProcessed == true
+    if rmbBlocked or not UIS.MouseEnabled then return end
+
+    generation += 1
+    local token = generation
+    if lockMode == "CENTRO" then
+        centerEnabled = not centerEnabled
+        centerSyncElapsed = 0
+        -- Lock e unlock ocorrem somente depois de InputEnded.
+        -- Evita competir com a captura de RMB feita pelo cliente Android.
+        return
+    end
+
+    if pcHeld then return end
+    pcHeld = true
+    savedMousePos = UIS:GetMouseLocation()
+    local wasLockedCenter = UIS.MouseBehavior == Enum.MouseBehavior.LockCenter
+    if not wasLockedCenter then
+        task.defer(function()
+            if session.alive and generation == token and pcHeld and rmbDown then
+                ownMouseLock(Enum.MouseBehavior.LockCurrentPosition)
             end
         end)
     end
 end
 
+local function onMouseUp()
+    if not rmbDown then return end
+    rmbDown = false
+    if rmbBlocked then
+        rmbBlocked = false
+        return
+    end
+
+    if lockMode == "PC" then
+        finishPC()
+        return
+    end
+
+    generation += 1
+    local token = generation
+    if centerEnabled then
+        -- Clique 1: prende no centro APÓS a liberação física do RMB.
+        task.delay(POST_INPUT_DELAY, function()
+            if not session.alive or generation ~= token or not centerEnabled or rmbDown then return end
+            ownMouseLock(Enum.MouseBehavior.LockCenter)
+        end)
+    else
+        -- Clique 2: devolve o cursor ao modo livre.
+        task.delay(POST_INPUT_DELAY, function()
+            if not session.alive or generation ~= token or centerEnabled or rmbDown then return end
+            releaseOwnedLock()
+        end)
+    end
+end
+
+resetLockState = function()
+    pcHeld = false
+    centerEnabled = false
+    savedMousePos = nil
+    generation += 1
+    centerSyncElapsed = 0
+    local token = generation
+    task.delay(POST_INPUT_DELAY, function()
+        if not session.alive or generation ~= token or rmbDown then return end
+        releaseOwnedLock()
+    end)
+end
+
 session.stop = function()
     if not session.alive then return end
-    stopRotate()
     session.alive = false
-    for _, connection in ipairs(session.connections) do connection:Disconnect() end
+    pcHeld, centerEnabled = false, false
+    generation += 1
+    for _, connection in ipairs(session.connections) do
+        connection:Disconnect()
+    end
     table.clear(session.connections)
+    -- Executar novamente deve liberar o lock antigo e não criar handlers duplicados.
+    releaseOwnedLock()
     pcall(function() gui:Destroy() end)
     if env[SESSION_KEY] == session then env[SESSION_KEY] = nil end
 end
@@ -352,11 +426,7 @@ end
 connect(UIS.InputBegan, function(input, gameProcessed)
     if not session.alive or not gui.Parent then return end
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        if gameProcessed then
-            rmbBlocked = true
-        elseif not rmbActive then
-            startRotate()
-        end
+        onMouseDown(gameProcessed)
         return
     end
     local key = input.KeyCode
@@ -367,9 +437,9 @@ connect(UIS.InputBegan, function(input, gameProcessed)
 end)
 
 connect(UIS.InputEnded, function(input)
+    if not session.alive then return end
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        stopRotate()
-        rmbBlocked = false
+        onMouseUp()
         return
     end
     local key = input.KeyCode
@@ -378,25 +448,19 @@ connect(UIS.InputEnded, function(input)
     end
 end)
 
--- Fallback para mouse externo cuja soltura não gera InputEnded no Android.
+-- Se o Roblox sobrescrever LockCenter, recupera apenas quando o RMB está
+-- solto e num intervalo limitado. Nunca disputa o mouse dentro do clique.
 connect(RunService.Heartbeat, function(dt)
     if not session.alive then return end
-    pollElapsed += dt
-    if pollElapsed < POLL_INTERVAL then return end
-    pollElapsed = 0
-    if not UIS.MouseEnabled then
-        stopRotate()
-        rmbBlocked = false
+    if lockMode ~= "CENTRO" or not centerEnabled or rmbDown or not UIS.MouseEnabled then
+        centerSyncElapsed = 0
         return
     end
-    local down = rightMouseDown()
-    if not down then
-        stopRotate()
-        rmbBlocked = false
-    elseif not rmbActive and not rmbBlocked then
-        startRotate()
-    elseif rmbActive and rmbOverride then
-        applyLock()
+    centerSyncElapsed += dt
+    if centerSyncElapsed < CENTER_SYNC_INTERVAL then return end
+    centerSyncElapsed = 0
+    if UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+        ownMouseLock(Enum.MouseBehavior.LockCenter)
     end
 end)
 
@@ -409,10 +473,19 @@ connect(RunService.RenderStepped, function()
         return
     end
 
-    -- RenderStepped só atualiza o desenho. Nunca altera MouseBehavior.
     if cursorEnabled and UIS.MouseEnabled then
         if UIS.MouseIconEnabled then UIS.MouseIconEnabled = false end
-        local pos = (rmbActive and rmbOverride and savedMousePos) or UIS:GetMouseLocation()
+        local pos
+        if lockMode == "CENTRO" and centerEnabled then
+            local camera = workspace.CurrentCamera
+            if camera then
+                local view = camera.ViewportSize
+                pos = Vector2.new(view.X * 0.5 - cursorSize * 0.5, view.Y * 0.5 - cursorSize * 0.5)
+            end
+        elseif pcHeld and savedMousePos then
+            pos = savedMousePos
+        end
+        pos = pos or UIS:GetMouseLocation()
         cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
         cursor.Visible = true
     else
@@ -421,5 +494,5 @@ connect(RunService.RenderStepped, function()
     end
 end)
 
-print("[MOBHUB] Dark Lavender Cursor Hub carregado.")
-print("[MOBHUB] Alt = GUI | Segure RMB = câmera (modo " .. lockMode .. ").")
+print("[MOBHUB] Cursor + Fix Mobilador carregado (modo " .. lockMode .. ").")
+print("[MOBHUB] PC = segurar RMB; CENTRO = clicar uma vez para travar, outra para liberar.")
