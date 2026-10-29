@@ -227,7 +227,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
     offsetX, offsetY = 0, 0
     cursorEnabled = true
     lockMode = "PC"
-    UIS.MouseBehavior = Enum.MouseBehavior.Default
+    -- Resetar preferências não deve interferir no controle de câmera.
     refresh()
     saveConfig()
 end)
@@ -264,26 +264,57 @@ local rmbActive = false
 local rmbBlocked = false
 local rmbOverride = false
 local savedMousePos = nil
+local originalMouseBehavior = nil
+local appliedMouseBehavior = nil
+local relockAttempts = 0
+local MAX_RELOCK_ATTEMPTS = 2
 
 local function startRotate()
+    if rmbActive then return end
+
     rmbActive = true
     savedMousePos = UIS:GetMouseLocation()
-    -- Shift lock e primeira pessoa já cuidam da câmera, não força outro bloqueio.
-    rmbOverride = UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter
+    originalMouseBehavior = UIS.MouseBehavior
+    appliedMouseBehavior = nil
+    relockAttempts = 0
+
+    -- Não disputar o controle de câmera com shift lock, primeira pessoa
+    -- ou outros scripts que já estejam gerenciando o mouse.
+    rmbOverride = originalMouseBehavior == Enum.MouseBehavior.Default
+    if rmbOverride then
+        local wanted = lockMode == "PC"
+            and Enum.MouseBehavior.LockCurrentPosition
+            or Enum.MouseBehavior.LockCenter
+
+        local ok = pcall(function()
+            UIS.MouseBehavior = wanted
+        end)
+
+        if ok then
+            appliedMouseBehavior = wanted
+        else
+            rmbOverride = false
+        end
+    end
 end
 
 local function stopRotate()
-    if rmbOverride then
-        UIS.MouseBehavior = Enum.MouseBehavior.Default
-        -- No modo CENTRO tenta devolver o mouse à posição anterior.
-        if lockMode == "CENTRO" and savedMousePos and type(mousemoveabs) == "function" then
-            local pos = savedMousePos
-            pcall(mousemoveabs, pos.X, pos.Y)
-        end
+    if not rmbActive then return end
+
+    -- Só liberar um bloqueio que este script aplicou e que ainda está ativo.
+    -- Nunca mover o mouse por mousemoveabs: alguns executores travam em código nativo.
+    if rmbOverride and appliedMouseBehavior and UIS.MouseBehavior == appliedMouseBehavior then
+        pcall(function()
+            UIS.MouseBehavior = originalMouseBehavior or Enum.MouseBehavior.Default
+        end)
     end
+
     rmbActive = false
     rmbOverride = false
     savedMousePos = nil
+    originalMouseBehavior = nil
+    appliedMouseBehavior = nil
+    relockAttempts = 0
 end
 
 UIS.InputBegan:Connect(function(input, gameProcessed)
@@ -305,6 +336,12 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        stopRotate()
+        rmbBlocked = false
+        return
+    end
+
     local key = input.KeyCode
     if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt then
         keyDebounce[key] = nil
@@ -316,29 +353,39 @@ pcall(function() UIS.MouseIconEnabled = false end)
 local connection
 connection = RunService.RenderStepped:Connect(function()
     if not gui.Parent or not cursor.Parent then
+        stopRotate()
         connection:Disconnect()
         return
     end
 
     if UIS.MouseEnabled then
-        -- Confere o RMB por frame para não perder a soltura do botão.
+        -- Fallback caso o executor não dispare InputEnded ao soltar RMB.
         local pressed = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
         if pressed then
             if not rmbActive and not rmbBlocked then
                 startRotate()
             end
-            if rmbActive and rmbOverride then
-                local wanted = lockMode == "PC" and Enum.MouseBehavior.LockCurrentPosition or Enum.MouseBehavior.LockCenter
-                if UIS.MouseBehavior ~= wanted then UIS.MouseBehavior = wanted end
+            if rmbActive and rmbOverride and appliedMouseBehavior then
+                local current = UIS.MouseBehavior
+                if current ~= appliedMouseBehavior then
+                    -- Tenta recuperar o bloqueio no máximo duas vezes.
+                    -- Se outro sistema controlar a câmera, deixa de disputar por frame.
+                    if current == Enum.MouseBehavior.Default and relockAttempts < MAX_RELOCK_ATTEMPTS then
+                        relockAttempts += 1
+                        local ok = pcall(function()
+                            UIS.MouseBehavior = appliedMouseBehavior
+                        end)
+                        if not ok then rmbOverride = false end
+                    else
+                        rmbOverride = false
+                    end
+                end
             end
         else
-            if rmbActive then stopRotate() end
+            stopRotate()
             rmbBlocked = false
-            if UIS.MouseBehavior == Enum.MouseBehavior.LockCurrentPosition then
-                UIS.MouseBehavior = Enum.MouseBehavior.Default
-            end
         end
-    elseif rmbActive then
+    else
         stopRotate()
     end
 
