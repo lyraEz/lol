@@ -1166,7 +1166,8 @@ end
 
 
 -- Lightweight 2D radar, local-only. Does not use Drawing or exploit-only APIs.
-local radar={on=false,range=500,size=150,position="Top right",dots={},last=0}
+local radar={on=false,range=500,size=170,position="Top right",dots={},last=0,
+    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7}
 local radarGui=Instance.new("ScreenGui")
 radarGui.Name="LyraPrisonRadar"
 radarGui.ResetOnSpawn=false
@@ -1177,7 +1178,7 @@ local radarFrame=Instance.new("Frame")
 radarFrame.Name="Radar"
 radarFrame.AnchorPoint=Vector2.new(1,0)
 radarFrame.Position=UDim2.new(1,-12,0,120)
-radarFrame.Size=UDim2.fromOffset(150,150)
+radarFrame.Size=UDim2.fromOffset(170,170)
 radarFrame.BackgroundColor3=Color3.fromRGB(21,19,33)
 radarFrame.BackgroundTransparency=0.19
 radarFrame.BorderSizePixel=0
@@ -1207,6 +1208,56 @@ radarTitle.Size=UDim2.new(1,0,0,19)
 radarTitle.Position=UDim2.fromOffset(0,4)
 radarTitle.ZIndex=5
 radarTitle.Parent=radarFrame
+radarFrame.Active=true
+radarFrame.ClipsDescendants=true
+local function radarRing(scale)
+    local circle=Instance.new("Frame")
+    circle.Name="RangeRing"
+    circle.AnchorPoint=Vector2.new(0.5,0.5)
+    circle.Position=UDim2.fromScale(0.5,0.5)
+    circle.Size=UDim2.fromScale(scale,scale)
+    circle.BackgroundTransparency=1
+    circle.BorderSizePixel=0
+    circle.ZIndex=2
+    circle.Parent=radarFrame
+    local round=Instance.new("UICorner",circle)
+    round.CornerRadius=UDim.new(1,0)
+    local stroke=Instance.new("UIStroke",circle)
+    stroke.Color=Color3.fromRGB(151,119,199)
+    stroke.Thickness=1
+    stroke.Transparency=0.72
+end
+radarRing(0.47)
+radarRing(0.85)
+local horizontal=Instance.new("Frame")
+horizontal.Size=UDim2.new(0.84,0,0,1)
+horizontal.Position=UDim2.fromScale(0.08,0.5)
+horizontal.BorderSizePixel=0
+horizontal.BackgroundColor3=Color3.fromRGB(164,142,197)
+horizontal.BackgroundTransparency=0.83
+horizontal.ZIndex=2
+horizontal.Parent=radarFrame
+local vertical=Instance.new("Frame")
+vertical.Size=UDim2.new(0,1,0.84,0)
+vertical.Position=UDim2.fromScale(0.5,0.08)
+vertical.BorderSizePixel=0
+vertical.BackgroundColor3=Color3.fromRGB(164,142,197)
+vertical.BackgroundTransparency=0.83
+vertical.ZIndex=2
+vertical.Parent=radarFrame
+local radarRangeLabel=Instance.new("TextLabel")
+radarRangeLabel.Name="RangeText"
+radarRangeLabel.Position=UDim2.new(0.06,0,1,-20)
+radarRangeLabel.Size=UDim2.new(0.9,0,0,16)
+radarRangeLabel.BackgroundTransparency=1
+radarRangeLabel.TextXAlignment=Enum.TextXAlignment.Left
+radarRangeLabel.Font=Enum.Font.Gotham
+radarRangeLabel.TextSize=10
+radarRangeLabel.TextColor3=Color3.fromRGB(197,183,218)
+radarRangeLabel.Text="Range: 500"
+radarRangeLabel.ZIndex=5
+radarRangeLabel.Parent=radarFrame
+
 radarFrame.Visible=false
 local RadarTab=Window:Tab({Title="Radar",Icon="radar"})
 RadarTab:Section("Team radar","Real-time relative positions on a mobile-friendly map overlay.")
@@ -1216,7 +1267,7 @@ RadarTab:Toggle({Title="Show radar",Flag="pl_radar",Callback=function(v)
 end})
 RadarTab:Slider({Title="Radar range",Min=100,Max=2500,Default=500,Suffix=" studs",
     Flag="pl_radar_range",Callback=function(v)radar.range=v end})
-RadarTab:Slider({Title="Radar size",Min=100,Max=230,Default=150,Suffix=" px",
+RadarTab:Slider({Title="Radar size",Min=110,Max=260,Default=170,Suffix=" px",
     Flag="pl_radar_size",Callback=function(v)
         radar.size=v
         radarFrame.Size=UDim2.fromOffset(v,v)
