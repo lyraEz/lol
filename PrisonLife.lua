@@ -442,10 +442,11 @@ Window:Connect(RunService.RenderStepped,function(dt)
     if not alive then return end
     local cameraNow=workspace.CurrentCamera
     if not cameraNow then return end
-    fovCircle.Visible=combat.showCircle and (combat.aim or combat.trigger)
+    fovCircle.Visible=combat.showCircle and (combat.aim or combat.trigger) and not Window.Visible
     if fovCircle.Visible then
         local point=pointer()
-        fovCircle.Size=UDim2.fromOffset(combat.radius*2,combat.radius*2)
+        local visualRadius=math.min(combat.radius,240)
+        fovCircle.Size=UDim2.fromOffset(visualRadius*2,visualRadius*2)
         fovCircle.Position=UDim2.fromOffset(point.X,point.Y)
     end
     if not (combat.aim or combat.trigger) or (combat.hold and not combat.held) then return end
