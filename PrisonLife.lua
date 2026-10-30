@@ -1351,7 +1351,9 @@ end
 
 -- Lightweight 2D radar, local-only. Does not use Drawing or exploit-only APIs.
 local radar={on=false,range=500,size=170,position="Top right",dots={},last=0,
-    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7,refresh=0.0833}
+    showAllies=true,showNames=false,showAvatars=true,showDistances=false,
+    showTeams=false,nameFormat="Display name",avatarSize=23,rotate=true,
+    showWithHub=false,dotSize=7,refresh=0.0833,emphasizeFocus=true}
 local radarGui=Instance.new("ScreenGui")
 radarGui.Name="LyraPrisonRadar"
 radarGui.ResetOnSpawn=false
@@ -1460,7 +1462,22 @@ RadarTab:Section("Display", "Choose the radar layout without covering the game c
 RadarTab:Toggle({Title="Show teammates",Default=true,Flag="pl_radar_allies",
     Callback=function(v)radar.showAllies=v end})
 RadarTab:Toggle({Title="Player names on radar",Flag="pl_radar_names",
+    Description="When off, no name is shown, including focused players.",
     Callback=function(v)radar.showNames=v end})
+RadarTab:Dropdown({Title="Player name format",
+    Options={"Display name","Username","Both"},Default="Display name",
+    Flag="pl_radar_name_format",Callback=function(v)radar.nameFormat=v end})
+RadarTab:Toggle({Title="Show player headshots",Default=true,Flag="pl_radar_avatars",
+    Description="Use Roblox avatar thumbnails instead of plain team dots.",
+    Callback=function(v)radar.showAvatars=v end})
+RadarTab:Toggle({Title="Show distances",Flag="pl_radar_distances",
+    Callback=function(v)radar.showDistances=v end})
+RadarTab:Toggle({Title="Show team in label",Flag="pl_radar_team_names",
+    Callback=function(v)radar.showTeams=v end})
+RadarTab:Toggle({Title="Highlight focused player",Default=true,Flag="pl_radar_focus_emphasis",
+    Callback=function(v)radar.emphasizeFocus=v end})
+RadarTab:Slider({Title="Headshot size",Min=16,Max=36,Default=23,Suffix=" px",
+    Flag="pl_radar_avatar_size",Callback=function(v)radar.avatarSize=v end})
 RadarTab:Toggle({Title="Rotate with camera",Default=true,Flag="pl_radar_rotate",
     Callback=function(v)radar.rotate=v end})
 RadarTab:Toggle({Title="Keep radar visible with hub",Flag="pl_radar_overui",
