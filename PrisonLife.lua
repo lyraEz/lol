@@ -541,7 +541,7 @@ Window:Connect(RunService.Heartbeat,function(dt)
 end)
 
 CombatTab:Toggle({Title="Enable camera aim",Flag="pl_combat_aim",Callback=function(v)combat.aim=v end})
-CombatTab:Toggle({Title="Hold E / right mouse to aim",Flag="pl_combat_hold",
+CombatTab:Toggle({Title="Hold E / RMB or mobile AIM button",Flag="pl_combat_hold",
     Description="Turn this off for always-on assist, including touch controls.",
     Callback=function(v)combat.hold=v end})
 CombatTab:Toggle({Title="Trigger on crosshair",Flag="pl_combat_trigger",
@@ -1241,7 +1241,7 @@ end
 
 -- Lightweight 2D radar, local-only. Does not use Drawing or exploit-only APIs.
 local radar={on=false,range=500,size=170,position="Top right",dots={},last=0,
-    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7,refresh=0.05}
+    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7,refresh=0.0833)
 local radarGui=Instance.new("ScreenGui")
 radarGui.Name="LyraPrisonRadar"
 radarGui.ResetOnSpawn=false
@@ -1357,7 +1357,7 @@ RadarTab:Toggle({Title="Keep radar visible with hub",Flag="pl_radar_overui",
     Callback=function(v)radar.showWithHub=v end})
 RadarTab:Slider({Title="Marker size",Min=4,Max=13,Default=7,Suffix=" px",
     Flag="pl_radar_marker",Callback=function(v)radar.dotSize=v end})
-RadarTab:Slider({Title="Radar refresh",Min=8,Max=30,Default=20,Suffix=" fps",
+RadarTab:Slider({Title="Radar refresh",Min=8,Max=30,Default=12,Suffix=" fps",
     Flag="pl_radar_refresh",Callback=function(v)radar.refresh=1/v end})
 RadarTab:Paragraph("Blue = guards  |  Orange = inmates  |  Red = criminals. The bright marker shows your focused player.")
 
