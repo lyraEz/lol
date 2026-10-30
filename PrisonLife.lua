@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.7.0
+-- Lyra Prison Life hub v1.7.1
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.7.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.7.1",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -438,12 +438,13 @@ local function startSilentHook()
     end
     local global=type(getgenv)=="function" and getgenv() or _G
     local controller=global.LyraPrisonSilentController
-    if type(controller)~="table" or controller.version~=2 then
+    if type(controller)~="table" or controller.version~=3 then
         if type(controller)=="table" and type(controller.enable)=="function" then
             pcall(function()controller.enable(false)end)
         end
-        controller={version=2,enabled=false,target=nil,chance=95,remote=remoteEvent,
-            observed=0,adjusted=0,unsupported=0,lastFormat="none",lastTarget="none"}
+        controller={version=3,enabled=false,target=nil,chance=95,remote=remoteEvent,
+            observed=0,adjusted=0,unsupported=0,errors=0,consecutiveErrors=0,
+            lastFormat="none",lastTarget="none",lastError="none"}
         local oldNamecall
         local function rewriteShot(value,hitPart,hitPosition,depth)
             if type(value)~="table" or depth>4 then return value,0,nil end
@@ -486,31 +487,54 @@ local function startSilentHook()
             return copy,changed,detected
         end
         local function interception(self,...)
-            if self==controller.remote and controller.enabled
-                and getnamecallmethod()=="FireServer"
-                and (type(checkcaller)~="function" or not checkcaller()) then
-                local args=table.pack(...)
-                local bullets=args[1]
-                controller.observed=controller.observed+1
-                if type(bullets)=="table" and math.random(100)<=controller.chance then
-                    local part=type(controller.target)=="function" and controller.target() or nil
-                    if part and part.Parent and part:IsA("BasePart") then
-                        local destination=part.Position+part.AssemblyLinearVelocity*(controller.prediction or 0)
-                        local modified,count,format=rewriteShot(bullets,part,destination,0)
-                        if count>0 then
-                            args[1]=modified
-                            controller.adjusted=controller.adjusted+count
-                            controller.lastFormat=format or "unknown"
-                            controller.lastTarget=part.Parent.Name
-                            return oldNamecall(self,table.unpack(args,1,args.n))
-                        else
-                            controller.unsupported=controller.unsupported+1
-                            controller.lastFormat="unsupported payload"
-                        end
-                    end
-                end
+            if self~=controller.remote or not controller.enabled
+                or getnamecallmethod()~="FireServer"
+                or (type(checkcaller)=="function" and checkcaller()) then
+                return oldNamecall(self,...)
             end
-            return oldNamecall(self,...)
+            -- Never let a Lua error in target selection or payload rewriting
+            -- interrupt the original weapon FireServer call.
+            local original=table.pack(...)
+            controller.observed=controller.observed+1
+            local changedArgs=nil
+            local ok,err=pcall(function()
+                if type(original[1])~="table" then
+                    controller.unsupported=controller.unsupported+1
+                    controller.lastFormat="non-table payload"
+                    return
+                end
+                if math.random(100)>controller.chance then return end
+                local part=type(controller.target)=="function" and controller.target() or nil
+                if not part or not part:IsA("BasePart") or not part.Parent then return end
+                local destination=part.Position+part.AssemblyLinearVelocity*(controller.prediction or 0)
+                if typeof(destination)~="Vector3" then return end
+                local modified,count,format=rewriteShot(original[1],part,destination,0)
+                if count>0 then
+                    changedArgs=table.clone(original)
+                    changedArgs[1]=modified
+                    controller.lastFormat=format or "unknown"
+                    controller.lastTarget=part.Parent.Name
+                else
+                    controller.unsupported=controller.unsupported+1
+                    controller.lastFormat="unsupported payload"
+                end
+            end)
+            if not ok then
+                controller.errors=controller.errors+1
+                controller.consecutiveErrors=controller.consecutiveErrors+1
+                controller.lastError=tostring(err):sub(1,180)
+                if controller.consecutiveErrors>=3 then
+                    controller.enabled=false
+                    controller.lastFormat="auto-bypass after errors"
+                end
+                return oldNamecall(self,table.unpack(original,1,original.n))
+            end
+            controller.consecutiveErrors=0
+            if changedArgs then
+                controller.adjusted=controller.adjusted+1
+                return oldNamecall(self,table.unpack(changedArgs,1,changedArgs.n))
+            end
+            return oldNamecall(self,table.unpack(original,1,original.n))
         end
         local wrapped=type(newcclosure)=="function" and newcclosure(interception) or interception
         local ok,prior=pcall(function()return hookmetamethod(game,"__namecall",wrapped)end)
@@ -576,7 +600,7 @@ CombatTab:Slider({Title="Movement prediction",Min=0,Max=30,Default=0,Suffix=" / 
     Flag="pl_silent_prediction",Callback=function(v)
         silent.prediction=v/100
         local env=type(getgenv)=="function" and getgenv() or _G
-        if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==2 then
+        if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==3 then
             env.LyraPrisonSilentController.prediction=silent.prediction
         end
     end})
@@ -603,7 +627,7 @@ Window:Connect(RunService.Heartbeat,function(dt)
     shotStatusElapsed=0
     local env=type(getgenv)=="function" and getgenv() or _G
     local hook=env.LyraPrisonSilentController
-    if hook and hook.version==2 and silent.enabled then
+    if hook and hook.version==3 and silent.enabled then
         shotStatus:Set("Shots: "..tostring(hook.observed or 0)
             .." | changed: "..tostring(hook.adjusted or 0)
             .." | unknown: "..tostring(hook.unsupported or 0)
@@ -1910,5 +1934,5 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v1.7", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.7.1", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
