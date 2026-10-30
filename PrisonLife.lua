@@ -275,23 +275,23 @@ local function visibleTarget(part,p)
     local trace=workspace:Raycast(from,part.Position-from,ray)
     return not trace or (p.Character and trace.Instance:IsDescendantOf(p.Character))
 end
-local function closestTarget()
+local function closestTarget(maxDistance, radius)
     local cameraNow=workspace.CurrentCamera
     if not cameraNow then return nil end
     local pointerPos=pointer()
-    local nearest,best=nil,combat.radius
+    local nearest,best=nil,radius or combat.radius
     local ownRoot=getRoot()
     local bestScore=nil
     for _,p in ipairs(Players:GetPlayers()) do
         if legalTarget(p) then
             local model=p.Character
             local part=model and (model:FindFirstChild(combat.part) or model:FindFirstChild("HumanoidRootPart"))
-            if part and ownRoot and (part.Position-ownRoot.Position).Magnitude<=combat.maxDistance then
+            if part and ownRoot and (part.Position-ownRoot.Position).Magnitude<=(maxDistance or combat.maxDistance) then
                 local worldDistance=(part.Position-ownRoot.Position).Magnitude
                 local projected,onScreen=cameraNow:WorldToViewportPoint(part.Position)
                 if onScreen and projected.Z>0 then
                     local distance=(Vector2.new(projected.X,projected.Y)-pointerPos).Magnitude
-                    if distance<=combat.radius and visibleTarget(part,p) then
+                    if distance<=(radius or combat.radius) and visibleTarget(part,p) then
                         local humanoid=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
                         local score=distance
                         if combat.priority=="Nearest" then score=worldDistance
@@ -313,7 +313,7 @@ end
 
 -- Silent aim: redirects the bullet data of legitimate ShootEvent calls only.
 -- The hook stays dormant when disabled; unsupported executors keep regular gun behavior.
-local silent={enabled=false,hitChance=95,available=false,reason="Not initialized"}
+local silent={enabled=false,hitChance=95,available=false,reason="Not initialized",maxDistance=800,radius=180}
 local function equippedFirearm()
     local char=LocalPlayer.Character
     if not char then return nil end
@@ -382,7 +382,7 @@ local function startSilentHook()
     controller.remote=remoteEvent
     controller.target=function()
         if not alive or not silent.enabled or not equippedFirearm() then return nil end
-        return closestTarget()
+        return closestTarget(silent.maxDistance, silent.radius)
     end
     controller.chance=silent.hitChance
     controller.enable(true)
