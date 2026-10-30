@@ -1,5 +1,5 @@
--- Lyra Prison Life hub v1.7.1
--- Designed for Prison Life (place 155615604) with the Lyra UI library.
+-- Lyra Prison Life hub v2.0.0
+-- Designed for Prison Life (place 155615604) with LibralyUI (vendor/Lyra.lua).
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
     warn("Lyra Prison Life: this is not Prison Life")
@@ -8,6 +8,8 @@ end
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GuiService = game:GetService("GuiService")
 local LocalPlayer = Players.LocalPlayer
 local last = {}
 local original = {Brightness = Lighting.Brightness, ClockTime = Lighting.ClockTime, GlobalShadows = Lighting.GlobalShadows}
@@ -40,7 +42,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.7.1",
+    Title="Prison Life", Subtitle="lyraEz | hub v2.0.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -48,7 +50,7 @@ local Window = Lyra:CreateWindow({
 local Home = Window:Tab({Title="Overview", Icon="home"})
 Home:Section("Prison Life", "Mobile-friendly utilities powered by Lyra UI.")
 Home:Paragraph("Map positions follow the classic map. Game updates may change destinations.")
-Home:Paragraph("v1.7: independent ESP labels, team filters, health bars and optional avatar headshots on the radar.")
+Home:Paragraph("v2.0: rebuilt silent aim, attribute-based weapon tuning, infinite ammo, safer recovery and upgraded radar.")
 Home:Button({Title="Show current position", Icon="map-pin", Callback=function()
     local r = getRoot()
     Window:Notify({Title="Your position", Text=r and tostring(r.Position) or "No character", Kind="info"})
@@ -100,6 +102,7 @@ local function findPlayer()
         if p~=LocalPlayer and (p.Name:lower():sub(1,#pickedPlayer)==pickedPlayer
             or p.DisplayName:lower():sub(1,#pickedPlayer)==pickedPlayer) then return p end
     end
+    return nil
 end
 PlayersTab:ButtonRow({
     {Title="Spectate",Icon="eye",Callback=function()
@@ -288,7 +291,6 @@ end
 
 -- Combat tools use client camera and normally equipped tools; no remote interception.
 local UIS=game:GetService("UserInputService")
-local Camera=workspace.CurrentCamera
 local combat={
     aim=false,hold=false,held=false,trigger=false,showCircle=true,
     radius=180,smooth=0.24,part="Head",wall=true,team=true,
@@ -384,7 +386,10 @@ local function closestTarget(maxDistance, radius, ignoreFov, checkWalls, bodyPar
     for _,p in ipairs(Players:GetPlayers()) do
         if legalTarget(p) then
             local model=p.Character
-            local part=model and (model:FindFirstChild(bodyPart or combat.part) or model:FindFirstChild("HumanoidRootPart"))
+            local wanted=bodyPart or combat.part
+            local part=model and (model:FindFirstChild(wanted)
+                or (wanted=="UpperTorso" and model:FindFirstChild("Torso"))
+                or model:FindFirstChild("HumanoidRootPart"))
             if part and ownRoot and (part.Position-ownRoot.Position).Magnitude<=(maxDistance or combat.maxDistance) then
                 local worldDistance=(part.Position-ownRoot.Position).Magnitude
                 local projected,onScreen=cameraNow:WorldToViewportPoint(part.Position)
@@ -413,23 +418,30 @@ local function closestTarget(maxDistance, radius, ignoreFov, checkWalls, bodyPar
     return nearest,best
 end
 
--- Silent aim: redirects the bullet data of legitimate ShootEvent calls only.
--- The hook stays dormant when disabled; unsupported executors keep regular gun behavior.
-local silent={enabled=false,hitChance=95,available=false,reason="Not initialized",
-    maxDistance=800,radius=180,prediction=0,ignoreFov=false,wall=true,part="Head"}
+-- Silent aim v2 redirects the local weapon ray before Prison Life creates its
+-- ShootEvent payload. The remote call itself is never edited, so the native
+-- shooting state, ammo decrement and cooldown can finish normally.
+local silent={enabled=false,hitChance=95,headChance=85,available=false,
+    reason="Not initialized",maxDistance=800,radius=180,prediction=0,
+    ignoreFov=false,wall=true,part="Adaptive (head/body)"}
 local function equippedFirearm()
     local char=LocalPlayer.Character
     if not char then return nil end
     for _,tool in ipairs(char:GetChildren())do
-        if tool:IsA("Tool") and (tool:FindFirstChild("GunStates",true)
+        if tool:IsA("Tool") and (tool:GetAttribute("ToolType")=="Gun"
+            or tool:GetAttribute("FireRate")~=nil
+            or tool:GetAttribute("Range")~=nil
+            or tool:FindFirstChild("GunStates",true)
             or tool:FindFirstChild("GunInterface",true)
             or tool:GetAttribute("StoredAmmo")~=nil
             or tool:GetAttribute("CurrentAmmo")~=nil
             or tool:GetAttribute("Behavior")~=nil) then return tool end
     end
+    return nil
 end
 local function startSilentHook()
-    local remoteEvent=game:GetService("ReplicatedStorage"):FindFirstChild("GunRemotes") and game:GetService("ReplicatedStorage").GunRemotes:FindFirstChild("ShootEvent")
+    local gunRemotes=ReplicatedStorage:FindFirstChild("GunRemotes")
+    local remoteEvent=gunRemotes and gunRemotes:FindFirstChild("ShootEvent")
     if not remoteEvent or not remoteEvent:IsA("RemoteEvent") then
         return false,"ShootEvent remote is missing"
     end
@@ -438,102 +450,88 @@ local function startSilentHook()
     end
     local global=type(getgenv)=="function" and getgenv() or _G
     local controller=global.LyraPrisonSilentController
-    if type(controller)~="table" or controller.version~=3 then
+    if type(controller)~="table" or controller.version~=4 then
         if type(controller)=="table" and type(controller.enable)=="function" then
             pcall(function()controller.enable(false)end)
         end
-        controller={version=3,enabled=false,target=nil,chance=95,remote=remoteEvent,
-            observed=0,adjusted=0,unsupported=0,errors=0,consecutiveErrors=0,
-            lastFormat="none",lastTarget="none",lastError="none"}
+        controller={version=4,enabled=false,busy=false,target=nil,chance=95,remote=remoteEvent,
+            rays=0,redirected=0,shots=0,bypassed=0,errors=0,
+            lastMethod="none",lastTarget="none",lastError="none"}
         local oldNamecall
-        local function rewriteShot(value,hitPart,hitPosition,depth)
-            if type(value)~="table" or depth>4 then return value,0,nil end
-            local copy={}
-            for key,item in pairs(value)do copy[key]=item end
-            -- Current GunRemotes protocol: {originVector3, hitPositionVector3, hitPart}.
-            if typeof(value[1])=="Vector3" and typeof(value[2])=="Vector3"
-                and typeof(value[3])=="Instance" and value[3]:IsA("BasePart") then
-                copy[2]=hitPosition
-                copy[3]=hitPart
-                return copy,1,"vector-triple"
+        local function decodeRay(method,args)
+            if method=="Raycast" and typeof(args[1])=="Vector3"
+                and typeof(args[2])=="Vector3" then
+                return args[1],args[2],"vector"
             end
-            -- Older Prison Life remotes: {RayObject=Ray, Hit=BasePart, ...}.
-            if typeof(value.RayObject)=="Ray" and typeof(value.Hit)=="Instance"
-                and value.Hit:IsA("BasePart") then
-                local oldRay=value.RayObject
-                local origin=typeof(oldRay)=="Ray" and oldRay.Origin
-                    or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position)
-                    or hitPosition
-                local direction=hitPosition-origin
-                if direction.Magnitude>0.01 then
-                    copy.RayObject=Ray.new(origin,direction.Unit*math.max(direction.Magnitude,1000))
-                    copy.Hit=hitPart
-                    if value.Distance~=nil then copy.Distance=direction.Magnitude end
-                    if value.Cframe~=nil then copy.Cframe=CFrame.lookAt(hitPosition,hitPosition+direction.Unit) end
-                    return copy,1,"legacy-ray"
-                end
+            if (method=="FindPartOnRayWithIgnoreList"
+                or method=="FindPartOnRayWithWhitelist"
+                or method=="FindPartOnRay" or method=="findPartOnRay")
+                and typeof(args[1])=="Ray" then
+                return args[1].Origin,args[1].Direction,"ray"
             end
-            local changed=0
-            local detected=nil
-            for key,item in pairs(value)do
-                if type(item)=="table" then
-                    local result,count,kind=rewriteShot(item,hitPart,hitPosition,depth+1)
-                    if count>0 then
-                        copy[key]=result
-                        changed=changed+count
-                        detected=kind
-                    end
-                end
-            end
-            return copy,changed,detected
+            return nil,nil,nil
+        end
+        local function looksLikeWeaponRay(origin,direction)
+            if typeof(origin)~="Vector3" or typeof(direction)~="Vector3"
+                or direction.Magnitude<24 then return false end
+            local char=LocalPlayer.Character
+            local head=char and char:FindFirstChild("Head")
+            local cameraNow=workspace.CurrentCamera
+            local closeToHead=head and (origin-head.Position).Magnitude<=16
+            local closeToCamera=cameraNow and (origin-cameraNow.CFrame.Position).Magnitude<=16
+            if not closeToHead and not closeToCamera then return false end
+            local tool=equippedFirearm()
+            if not tool then return false end
+            if (tool:GetAttribute("Local_ReloadSession") or 0)~=0 then return false end
+            return true
         end
         local function interception(self,...)
-            if self~=controller.remote or not controller.enabled
-                or getnamecallmethod()~="FireServer"
+            local method=getnamecallmethod()
+            local original=table.pack(...)
+            if self==controller.remote and method=="FireServer"
+                and not (type(checkcaller)=="function" and checkcaller()) then
+                controller.shots=controller.shots+1
+            end
+            if self~=workspace or not controller.enabled or controller.busy
                 or (type(checkcaller)=="function" and checkcaller()) then
                 return oldNamecall(self,...)
             end
-            -- Never let a Lua error in target selection or payload rewriting
-            -- interrupt the original weapon FireServer call.
-            local original=table.pack(...)
-            controller.observed=controller.observed+1
-            local changedArgs=nil
-            local ok,err=pcall(function()
-                if type(original[1])~="table" then
-                    controller.unsupported=controller.unsupported+1
-                    controller.lastFormat="non-table payload"
-                    return
-                end
-                if math.random(100)>controller.chance then return end
-                local part=type(controller.target)=="function" and controller.target() or nil
-                if not part or not part:IsA("BasePart") or not part.Parent then return end
-                local destination=part.Position+part.AssemblyLinearVelocity*(controller.prediction or 0)
-                if typeof(destination)~="Vector3" then return end
-                local modified,count,format=rewriteShot(original[1],part,destination,0)
-                if count>0 then
-                    changedArgs=table.clone(original)
-                    changedArgs[1]=modified
-                    controller.lastFormat=format or "unknown"
-                    controller.lastTarget=part.Parent.Name
-                else
-                    controller.unsupported=controller.unsupported+1
-                    controller.lastFormat="unsupported payload"
-                end
-            end)
-            if not ok then
-                controller.errors=controller.errors+1
-                controller.consecutiveErrors=controller.consecutiveErrors+1
-                controller.lastError=tostring(err):sub(1,180)
-                if controller.consecutiveErrors>=3 then
-                    controller.enabled=false
-                    controller.lastFormat="auto-bypass after errors"
-                end
+            local origin,direction,kind=decodeRay(method,original)
+            if not origin or not looksLikeWeaponRay(origin,direction) then
                 return oldNamecall(self,table.unpack(original,1,original.n))
             end
-            controller.consecutiveErrors=0
-            if changedArgs then
-                controller.adjusted=controller.adjusted+1
-                return oldNamecall(self,table.unpack(changedArgs,1,changedArgs.n))
+            controller.rays=controller.rays+1
+            if math.random(1,100)>controller.chance then
+                controller.bypassed=controller.bypassed+1
+                return oldNamecall(self,table.unpack(original,1,original.n))
+            end
+            local changed=nil
+            controller.busy=true
+            local ok,err=pcall(function()
+                local part=type(controller.target)=="function" and controller.target() or nil
+                if not part or not part:IsA("BasePart") or not part.Parent then
+                    controller.bypassed=controller.bypassed+1
+                    return
+                end
+                local destination=part.Position+part.AssemblyLinearVelocity*(controller.prediction or 0)
+                local delta=destination-origin
+                if delta.Magnitude<0.1 then return end
+                local redirectedDirection=delta.Unit*math.max(direction.Magnitude,delta.Magnitude+8)
+                changed=table.clone(original)
+                if kind=="vector" then changed[2]=redirectedDirection
+                else changed[1]=Ray.new(origin,redirectedDirection) end
+                controller.lastMethod=method
+                controller.lastTarget=part.Parent.Name.."."..part.Name
+            end)
+            controller.busy=false
+            if not ok then
+                controller.errors=controller.errors+1
+                controller.lastError=tostring(err):sub(1,180)
+                return oldNamecall(self,table.unpack(original,1,original.n))
+            end
+            if changed then
+                controller.redirected=controller.redirected+1
+                return oldNamecall(self,table.unpack(changed,1,changed.n))
             end
             return oldNamecall(self,table.unpack(original,1,original.n))
         end
@@ -549,7 +547,14 @@ local function startSilentHook()
     controller.remote=remoteEvent
     controller.target=function()
         if not alive or not silent.enabled then return nil end
-        return closestTarget(silent.maxDistance, silent.radius, silent.ignoreFov, silent.wall, silent.part)
+        local wanted=silent.part
+        if wanted=="Adaptive (head/body)" then
+            wanted=math.random(1,100)<=silent.headChance and "Head" or "HumanoidRootPart"
+        elseif wanted=="Torso" then
+            wanted="UpperTorso"
+        end
+        return closestTarget(silent.maxDistance,silent.radius,
+            silent.ignoreFov,silent.wall,wanted)
     end
     controller.chance=silent.hitChance
     controller.prediction=silent.prediction
@@ -561,7 +566,8 @@ end
 
 local CombatTab=Window:Tab({Title="Combat",Icon="crosshair"})
 CombatTab:Section("Aim assist", "Client-side aim assistance. Camera tracking never changes shot data.")
-CombatTab:Section("Silent aim", "PC and mobile: follows weapon ShootEvent rather than mouse clicks. Requires executor hook support.")
+CombatTab:Section("Silent aim 2.0",
+    "Redirects the weapon ray while leaving ShootEvent and gun state untouched. Works with normal PC and mobile fire controls.")
 CombatTab:Toggle({Title="Enable silent aim",Flag="pl_combat_silent",Callback=function(value)
     if not value then
         silent.enabled=false
@@ -581,7 +587,7 @@ CombatTab:Toggle({Title="Enable silent aim",Flag="pl_combat_silent",Callback=fun
             Window:Status("Silent aim unavailable: "..tostring(why),"warning")
         end
         task.defer(function()if alive then Window:SetFlag("pl_combat_silent",false)end end)
-    else Window:Status("Silent hook installed. Fire your weapon to verify observed/changed shots.","success")end
+    else Window:Status("Ray redirect ready. Normal shooting stays untouched.","success")end
 end})
 CombatTab:Slider({Title="Silent hit chance",Min=1,Max=100,Default=95,Suffix="%",
     Flag="pl_combat_hitchance",Callback=function(value)
@@ -590,8 +596,12 @@ CombatTab:Slider({Title="Silent hit chance",Min=1,Max=100,Default=95,Suffix="%",
         if g.LyraPrisonSilentController then g.LyraPrisonSilentController.chance=value end
     end})
 
-CombatTab:Dropdown({Title="Silent target part",Options={"Head","HumanoidRootPart"},
-    Default="Head",Flag="pl_silent_part",Callback=function(v)silent.part=v end})
+CombatTab:Dropdown({Title="Silent target part",
+    Options={"Adaptive (head/body)","Head","Torso","HumanoidRootPart"},
+    Default="Adaptive (head/body)",Flag="pl_silent_part",
+    Callback=function(v)silent.part=v end})
+CombatTab:Slider({Title="Adaptive headshot chance",Min=0,Max=100,Default=85,Suffix="%",
+    Flag="pl_silent_headchance",Callback=function(v)silent.headChance=v end})
 CombatTab:Toggle({Title="Silent aim 360 (ignore FOV)",Flag="pl_silent_anywhere",
     Description="Ignore screen FOV, but still respect distance, team and priority.",
     Callback=function(v)silent.ignoreFov=v end})
@@ -601,34 +611,34 @@ CombatTab:Slider({Title="Movement prediction",Min=0,Max=30,Default=0,Suffix=" / 
     Flag="pl_silent_prediction",Callback=function(v)
         silent.prediction=v/100
         local env=type(getgenv)=="function" and getgenv() or _G
-        if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==3 then
+        if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==4 then
             env.LyraPrisonSilentController.prediction=silent.prediction
         end
     end})
 CombatTab:Button({Title="Emergency: restore normal shooting",Icon="refresh-cw",
-    Description="Immediately disables silent interception. Original shots pass untouched.",
+    Description="Immediately disables ray redirection. The original gun system remains active.",
     Callback=function()
         local env=type(getgenv)=="function" and getgenv() or _G
         local hook=env.LyraPrisonSilentController
         silent.enabled=false
         if hook and type(hook.enable)=="function" then hook.enable(false)end
         Window:SetFlag("pl_combat_silent",false)
-        Window:Notify({Title="Normal shooting",Text="Silent aim disabled; original weapon calls are unchanged.",Kind="success"})
+        Window:Notify({Title="Normal shooting",Text="Silent aim disabled. Weapon rays and remotes are untouched.",Kind="success"})
     end})
 CombatTab:Section("Silent aim diagnostics",
-    "Observed means a game shot reached the hook. Adjusted means bullet data changed, not that the server registered damage.")
+    "Rays are weapon traces seen locally. Redirected means the trace was aimed at a valid target. ShootEvent is only observed, never edited.")
 local shotStatus=CombatTab:Label("Enable silent aim, equip a gun and fire to inspect shot interception.")
 CombatTab:Button({Title="Refresh shot diagnostics",Icon="refresh-cw",Callback=function()
     local env=type(getgenv)=="function" and getgenv() or _G
     local hook=env.LyraPrisonSilentController
-    if not hook or hook.version~=2 then
+    if not hook or hook.version~=4 then
         shotStatus:Set("Hook not installed in this session.")
         return
     end
-    shotStatus:Set("Observed: "..tostring(hook.observed or 0)
-        .." | adjusted: "..tostring(hook.adjusted or 0)
-        .." | unsupported: "..tostring(hook.unsupported or 0)
-        .." | format: "..tostring(hook.lastFormat or "none"))
+    shotStatus:Set("Rays: "..tostring(hook.rays or 0)
+        .." | redirected: "..tostring(hook.redirected or 0)
+        .." | shots: "..tostring(hook.shots or 0)
+        .." | method: "..tostring(hook.lastMethod or "none"))
 end})
 local shotStatusElapsed=0
 Window:Connect(RunService.Heartbeat,function(dt)
@@ -638,11 +648,11 @@ Window:Connect(RunService.Heartbeat,function(dt)
     shotStatusElapsed=0
     local env=type(getgenv)=="function" and getgenv() or _G
     local hook=env.LyraPrisonSilentController
-    if hook and hook.version==3 and silent.enabled then
-        shotStatus:Set("Shots: "..tostring(hook.observed or 0)
-            .." | changed: "..tostring(hook.adjusted or 0)
-            .." | unknown: "..tostring(hook.unsupported or 0)
-            .." | payload: "..tostring(hook.lastFormat or "-"))
+    if hook and hook.version==4 and silent.enabled then
+        shotStatus:Set("Rays: "..tostring(hook.rays or 0)
+            .." | redirected: "..tostring(hook.redirected or 0)
+            .." | shots: "..tostring(hook.shots or 0)
+            .." | target: "..tostring(hook.lastTarget or "-"))
     end
 end)
 
@@ -1324,57 +1334,254 @@ TeamTools:Button({Title="Arrest nearest (Guards)",Icon="shield",
     end})
 
 
--- Local weapon config editor: does not spoof server ownership or bypass gun remotes.
-local customGun=false
-local originalGunStates=setmetatable({}, {__mode="k"})
-local function tuneGun(tool)
-    local module=tool:FindFirstChild("GunStates",true)
-    if not module or not module:IsA("ModuleScript") then return false,"GunStates missing" end
-    local ok,config=pcall(require,module)
-    if not ok or type(config)~="table" then return false,"GunStates require failed" end
-    if not originalGunStates[module]then
-        local copy={}
-        for k,v in pairs(config)do copy[k]=v end
-        originalGunStates[module]=copy
+-- Prison Life now exposes weapon state as Tool attributes and keeps defaults
+-- in ReplicatedStorage.SharedModules.ToolProperties. Older GunStates tools are
+-- still supported as a fallback.
+local gunTuning={enabled=false,noSpread=true,noRecoil=true,autoFire=true,
+    rapidFire=true,fastReload=true,longRange=true,infAmmo=false,
+    fireRate=0.05,reloadTime=0.08,range=5000}
+local knownGunNames={["AK-47"]=true,["Remington 870"]=true,M9=true,M700=true,
+    M4A1=true,FAL=true,MP5=true,Revolver=true,Taser=true}
+local originalGunAttributes=setmetatable({}, {__mode="k"})
+local originalGunModules=setmetatable({}, {__mode="k"})
+local shootingSince=setmetatable({}, {__mode="k"})
+local NIL_ATTRIBUTE={}
+local toolPropertiesFolder=(ReplicatedStorage:FindFirstChild("SharedModules")
+    and ReplicatedStorage.SharedModules:FindFirstChild("ToolProperties"))
+local gunRemotesFolder=ReplicatedStorage:FindFirstChild("GunRemotes")
+local reloadRemote=gunRemotesFolder and gunRemotesFolder:FindFirstChild("FuncReload")
+local lastServerReload=0
+local function refreshWeaponReferences()
+    if not toolPropertiesFolder or not toolPropertiesFolder.Parent then
+        local shared=ReplicatedStorage:FindFirstChild("SharedModules")
+        toolPropertiesFolder=shared and shared:FindFirstChild("ToolProperties")
     end
-    if customGun then
-        local mods={Spread=0,ReloadTime=0.1,FireRate=0.065,AutoFire=true,
-            Range=5000,MaxAmmo=999,CurrentAmmo=999,StoredAmmo=999}
-        for key,newValue in pairs(mods)do
-            local oldValue=originalGunStates[module][key]
-            if oldValue~=nil and type(oldValue)==type(newValue) then config[key]=newValue end
+    if not reloadRemote or not reloadRemote.Parent then
+        gunRemotesFolder=ReplicatedStorage:FindFirstChild("GunRemotes")
+        reloadRemote=gunRemotesFolder and gunRemotesFolder:FindFirstChild("FuncReload")
+    end
+end
+
+local function isGunTool(tool)
+    return tool and tool:IsA("Tool") and (knownGunNames[tool.Name]
+        or tool:GetAttribute("ToolType")=="Gun"
+        or tool:GetAttribute("FireRate")~=nil
+        or tool:GetAttribute("Local_CurrentAmmo")~=nil
+        or tool:GetAttribute("Behavior")~=nil
+        or tool:FindFirstChild("GunStates",true)~=nil)
+end
+local function setRememberedAttribute(tool,key,value)
+    local saved=originalGunAttributes[tool]
+    if not saved then saved={};originalGunAttributes[tool]=saved end
+    if saved[key]==nil then
+        local current=tool:GetAttribute(key)
+        saved[key]=current==nil and NIL_ATTRIBUTE or current
+    end
+    tool:SetAttribute(key,value)
+end
+local function restoreToolAttributes(tool)
+    local saved=originalGunAttributes[tool]
+    if not saved then return end
+    for key,value in pairs(saved)do
+        pcall(function()
+            if value==NIL_ATTRIBUTE then tool:SetAttribute(key,nil)
+            else tool:SetAttribute(key,value)end
+        end)
+    end
+    originalGunAttributes[tool]=nil
+end
+local function tuneConfigTable(module,config,enabled)
+    if not module or type(config)~="table" then return false end
+    local saved=originalGunModules[module]
+    if not saved then saved={};originalGunModules[module]=saved end
+    local changes={}
+    if gunTuning.noSpread then changes.Spread=0;changes.SpreadRadius=0 end
+    if gunTuning.noRecoil then
+        changes.Recoil=0;changes.RecoilStrength=0;changes.RecoilKick=0;changes.CameraRecoil=0
+    end
+    if gunTuning.autoFire then changes.AutoFire=true end
+    if gunTuning.rapidFire then changes.FireRate=gunTuning.fireRate end
+    if gunTuning.fastReload then changes.ReloadTime=gunTuning.reloadTime end
+    if gunTuning.longRange then changes.Range=gunTuning.range end
+    if enabled then
+        for key,value in pairs(changes)do
+            if config[key]~=nil then
+                if saved[key]==nil then saved[key]=config[key] end
+                config[key]=value
+            end
         end
     else
-        for k,v in pairs(originalGunStates[module])do config[k]=v end
+        for key,value in pairs(saved)do config[key]=value end
+        originalGunModules[module]=nil
     end
+    return true
+end
+local function tuneModule(module,enabled)
+    if not module or not module:IsA("ModuleScript") then return false end
+    local ok,config=pcall(require,module)
+    return ok and tuneConfigTable(module,config,enabled) or false
+end
+local function applyGunTuning(tool)
+    if not isGunTool(tool) then return false end
+    refreshWeaponReferences()
+    if not gunTuning.enabled then
+        restoreToolAttributes(tool)
+    else
+        if gunTuning.noSpread then
+            setRememberedAttribute(tool,"SpreadRadius",0)
+            if tool:GetAttribute("Spread")~=nil then setRememberedAttribute(tool,"Spread",0)end
+        end
+        if gunTuning.noRecoil then
+            for _,key in ipairs({"Recoil","RecoilStrength","RecoilKick","CameraRecoil"})do
+                if tool:GetAttribute(key)~=nil then setRememberedAttribute(tool,key,0)end
+            end
+        end
+        if gunTuning.autoFire then setRememberedAttribute(tool,"AutoFire",true)end
+        if gunTuning.rapidFire then setRememberedAttribute(tool,"FireRate",gunTuning.fireRate)end
+        if gunTuning.fastReload then setRememberedAttribute(tool,"ReloadTime",gunTuning.reloadTime)end
+        if gunTuning.longRange then setRememberedAttribute(tool,"Range",gunTuning.range)end
+    end
+    local modules={}
+    local sharedModule=toolPropertiesFolder and toolPropertiesFolder:FindFirstChild(tool.Name)
+    local legacyModule=tool:FindFirstChild("GunStates",true)
+    if sharedModule then table.insert(modules,sharedModule)end
+    if legacyModule and legacyModule~=sharedModule then table.insert(modules,legacyModule)end
+    for _,module in ipairs(modules)do tuneModule(module,gunTuning.enabled)end
     return true
 end
 local function refreshGuns()
     local count=0
-    for _,container in ipairs({LocalPlayer:FindFirstChild("Backpack") or LocalPlayer,LocalPlayer.Character or LocalPlayer})do
-        for _,obj in ipairs(container:GetChildren())do
-            if obj:IsA("Tool") and tuneGun(obj)then count=count+1 end
+    for _,container in ipairs({LocalPlayer:FindFirstChild("Backpack"),LocalPlayer.Character})do
+        if container then
+            for _,obj in ipairs(container:GetChildren())do
+                if applyGunTuning(obj)then count=count+1 end
+            end
         end
     end
     return count
 end
-TeamTools:Section("Local gun tuning","Client-side GunStates only; server restrictions and ammunition limits still apply.")
-TeamTools:Toggle({Title="Fast reload / low spread",Flag="pl_gun_tuning",Callback=function(v)
-    customGun=v
-    Window:Status("Processed "..refreshGuns().." local gun configurations", "info")
+local function retuneGuns()
+    local enabled=gunTuning.enabled
+    gunTuning.enabled=false
+    refreshGuns()
+    gunTuning.enabled=enabled
+    return refreshGuns()
+end
+local function repairCurrentGun(showMessage)
+    refreshWeaponReferences()
+    local tool=equippedFirearm()
+    if not tool then
+        if showMessage then Window:Status("Equip a firearm first","warning")end
+        return false
+    end
+    pcall(function()
+        tool:SetAttribute("Local_IsShooting",false)
+        tool:SetAttribute("Local_ReloadSession",0)
+        local maxAmmo=tool:GetAttribute("MaxAmmo") or 30
+        tool:SetAttribute("Local_CurrentAmmo",maxAmmo)
+        if tool:GetAttribute("StoredAmmo")~=nil then tool:SetAttribute("StoredAmmo",9999)end
+    end)
+    if reloadRemote and reloadRemote:IsA("RemoteFunction") then
+        task.spawn(function()pcall(function()reloadRemote:InvokeServer()end)end)
+    end
+    if showMessage then Window:Status("Weapon state repaired and ammo refreshed","success")end
+    return true
+end
+
+TeamTools:Section("Weapon tuning 2.0",
+    "Uses the current Tool attributes and SharedModules.ToolProperties. Every static change is restored when disabled.")
+TeamTools:Toggle({Title="Enable weapon tuning",Flag="pl_gun_tuning",Callback=function(v)
+    gunTuning.enabled=v
+    Window:Status("Recognized "..refreshGuns().." firearm tools",v and "success" or "info")
 end})
-TeamTools:Button({Title="Refresh gun tuning",Icon="refresh-cw",Callback=function()
-    Window:Status("Processed "..refreshGuns().." gun configs","info")
-end})
-local reloadGunClock=0
+TeamTools:Toggle({Title="No spread",Default=true,Flag="pl_gun_nospread",
+    Callback=function(v)gunTuning.noSpread=v;retuneGuns()end})
+TeamTools:Toggle({Title="No camera recoil",Default=true,Flag="pl_gun_norecoil",
+    Callback=function(v)gunTuning.noRecoil=v;retuneGuns()end})
+TeamTools:Toggle({Title="Automatic fire",Default=true,Flag="pl_gun_auto",
+    Callback=function(v)gunTuning.autoFire=v;retuneGuns()end})
+TeamTools:Toggle({Title="Rapid fire",Default=true,Flag="pl_gun_rapid",
+    Callback=function(v)gunTuning.rapidFire=v;retuneGuns()end})
+TeamTools:Slider({Title="Fire delay",Min=20,Max=300,Default=50,Suffix=" ms",
+    Flag="pl_gun_rate",Callback=function(v)gunTuning.fireRate=v/1000;retuneGuns()end})
+TeamTools:Toggle({Title="Fast reload",Default=true,Flag="pl_gun_fastreload",
+    Callback=function(v)gunTuning.fastReload=v;retuneGuns()end})
+TeamTools:Slider({Title="Reload duration",Min=40,Max=1000,Default=80,Suffix=" ms",
+    Flag="pl_gun_reloadtime",Callback=function(v)gunTuning.reloadTime=v/1000;retuneGuns()end})
+TeamTools:Toggle({Title="Extended weapon range",Default=true,Flag="pl_gun_longrange",
+    Callback=function(v)gunTuning.longRange=v;retuneGuns()end})
+TeamTools:Slider({Title="Weapon range",Min=500,Max=8000,Default=5000,Suffix=" studs",
+    Flag="pl_gun_range",Callback=function(v)gunTuning.range=v;retuneGuns()end})
+TeamTools:Toggle({Title="Infinite ammo",Flag="pl_gun_infammo",
+    Description="Maintains local ammo, clears stuck shooting state and uses FuncReload as a server-compatible fallback.",
+    Callback=function(v)
+        gunTuning.infAmmo=v
+        if v then repairCurrentGun(false)end
+    end})
+local gunDiagnostic=TeamTools:Label("Weapon engine: waiting for inventory scan")
+TeamTools:ButtonRow({
+    {Title="Apply / rescan",Icon="refresh-cw",Callback=function()
+        local count=refreshGuns()
+        gunDiagnostic:Set("Recognized "..count.." firearm tools | ToolProperties: "
+            ..(toolPropertiesFolder and "ready" or "missing"))
+        Window:Status("Weapon tuning refreshed","success")
+    end},
+    {Title="Repair current gun",Icon="wrench",Callback=function()repairCurrentGun(true)end}
+})
+
+local weaponMaintenanceClock=0
+local weaponRetuneClock=0
 Window:Connect(RunService.Heartbeat,function(dt)
-    if not customGun or not alive then return end
-    reloadGunClock=reloadGunClock+dt
-    if reloadGunClock>=1.5 then
-        reloadGunClock=0
-        refreshGuns()
+    if not alive then return end
+    weaponMaintenanceClock=weaponMaintenanceClock+dt
+    if weaponMaintenanceClock<0.03 then return end
+    local maintenanceElapsed=weaponMaintenanceClock
+    weaponMaintenanceClock=0
+    local tool=equippedFirearm()
+    weaponRetuneClock=weaponRetuneClock+maintenanceElapsed
+    if gunTuning.enabled and tool and weaponRetuneClock>=0.75 then
+        weaponRetuneClock=0
+        applyGunTuning(tool)
+    end
+    if not gunTuning.infAmmo or not tool then return end
+    refreshWeaponReferences()
+    local now=os.clock()
+    local current=tool:GetAttribute("Local_CurrentAmmo")
+    local maxAmmo=tool:GetAttribute("MaxAmmo") or 30
+    if current~=nil and current<maxAmmo then tool:SetAttribute("Local_CurrentAmmo",maxAmmo)end
+    if tool:GetAttribute("StoredAmmo")~=nil then tool:SetAttribute("StoredAmmo",9999)end
+    if (tool:GetAttribute("Local_ReloadSession") or 0)~=0 then
+        tool:SetAttribute("Local_ReloadSession",0)
+    end
+    if tool:GetAttribute("Local_IsShooting") then
+        shootingSince[tool]=shootingSince[tool] or now
+        if now-shootingSince[tool]>0.65 then tool:SetAttribute("Local_IsShooting",false)end
+    else shootingSince[tool]=nil end
+    if current~=nil and current<=0 and reloadRemote and reloadRemote:IsA("RemoteFunction")
+        and now-lastServerReload>0.8 then
+        lastServerReload=now
+        task.spawn(function()pcall(function()reloadRemote:InvokeServer()end)end)
     end
 end)
+
+local backpack=LocalPlayer:FindFirstChild("Backpack")
+if backpack then Window:Connect(backpack.ChildAdded,function(tool)task.defer(applyGunTuning,tool)end)end
+Window:Connect(LocalPlayer.CharacterAdded,function(char)
+    Window:Connect(char.ChildAdded,function(tool)task.defer(applyGunTuning,tool)end)
+    task.delay(0.5,function()if alive then refreshGuns()end end)
+end)
+local function restoreAllGunTuning()
+    gunTuning.enabled=false
+    gunTuning.infAmmo=false
+    refreshGuns()
+    for module,saved in pairs(originalGunModules)do
+        local ok,config=pcall(require,module)
+        if ok and type(config)=="table" then
+            for key,value in pairs(saved)do config[key]=value end
+        end
+        originalGunModules[module]=nil
+    end
+end
 
 local GearStatus=TeamTools:Label("Inventory: scanning...")
 TeamTools:Button({Title="Refresh inventory",Icon="refresh-cw",Callback=function()
@@ -1396,8 +1603,7 @@ local baseCleanup=cleanup
 cleanup=function()
     restoreCollision()
     clearFly()
-    customGun=false
-    pcall(refreshGuns)
+    pcall(restoreAllGunTuning)
     local model=LocalPlayer.Character
     local hum=model and model:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -1411,9 +1617,10 @@ end
 -- Lightweight 2D radar, local-only. Does not use Drawing or exploit-only APIs.
 local radar={on=false,range=500,size=170,position="Top right",dots={},last=0,
     showAllies=true,showNames=false,showAvatars=true,showDistances=false,
-    showTeams=false,nameFormat="Display name",avatarSize=23,rotate=true,
+    showTeams=false,showHealth=false,showElevation=true,healthColor=true,
+    labelMode="Nearest 6",nameFormat="Display name",avatarSize=23,rotate=true,
     showWithHub=false,dotSize=7,refresh=0.0833,emphasizeFocus=true,
-    guards=true,inmates=true,criminals=true,neutral=true}
+    guards=true,inmates=true,criminals=true,neutral=true,background=19}
 local radarGui=Instance.new("ScreenGui")
 radarGui.Name="LyraPrisonRadar"
 radarGui.ResetOnSpawn=false
@@ -1426,7 +1633,7 @@ radarFrame.AnchorPoint=Vector2.new(1,0)
 radarFrame.Position=UDim2.new(1,-12,0,120)
 radarFrame.Size=UDim2.fromOffset(170,170)
 radarFrame.BackgroundColor3=Color3.fromRGB(21,19,33)
-radarFrame.BackgroundTransparency=0.19
+radarFrame.BackgroundTransparency=radar.background/100
 radarFrame.BorderSizePixel=0
 radarFrame.Parent=radarGui
 local radCorner=Instance.new("UICorner",radarFrame)
@@ -1444,6 +1651,19 @@ center.ZIndex=4
 center.Parent=radarFrame
 local centerCorner=Instance.new("UICorner",center)
 centerCorner.CornerRadius=UDim.new(1,0)
+local heading=Instance.new("TextLabel")
+heading.Name="Heading"
+heading.AnchorPoint=Vector2.new(0.5,0.5)
+heading.Position=UDim2.fromScale(0.5,0.5)
+heading.Size=UDim2.fromOffset(26,26)
+heading.BackgroundTransparency=1
+heading.Text="▲"
+heading.Font=Enum.Font.GothamBold
+heading.TextSize=18
+heading.TextColor3=Color3.fromRGB(250,244,255)
+heading.TextStrokeTransparency=0.35
+heading.ZIndex=5
+heading.Parent=radarFrame
 local radarTitle=Instance.new("TextLabel")
 radarTitle.BackgroundTransparency=1
 radarTitle.Font=Enum.Font.GothamBold
@@ -1455,7 +1675,9 @@ radarTitle.Position=UDim2.fromOffset(0,4)
 radarTitle.ZIndex=5
 radarTitle.Parent=radarFrame
 radarFrame.Active=true
-radarFrame.ClipsDescendants=true
+-- Labels may extend a few pixels past the circular plot; density limiting keeps
+-- them readable without cutting names at the frame edge.
+radarFrame.ClipsDescendants=false
 local function radarRing(scale)
     local circle=Instance.new("Frame")
     circle.Name="RangeRing"
@@ -1534,6 +1756,16 @@ RadarTab:Toggle({Title="Show distances",Flag="pl_radar_distances",
     Callback=function(v)radar.showDistances=v end})
 RadarTab:Toggle({Title="Show team in label",Flag="pl_radar_team_names",
     Callback=function(v)radar.showTeams=v end})
+RadarTab:Toggle({Title="Show health in label",Flag="pl_radar_health",
+    Callback=function(v)radar.showHealth=v end})
+RadarTab:Toggle({Title="Show elevation arrows",Default=true,Flag="pl_radar_elevation",
+    Description="Adds an up or down arrow when a player is on a different floor.",
+    Callback=function(v)radar.showElevation=v end})
+RadarTab:Toggle({Title="Health-colored marker rings",Default=true,Flag="pl_radar_health_color",
+    Callback=function(v)radar.healthColor=v end})
+RadarTab:Dropdown({Title="Label density",
+    Options={"Nearest 6","Focused only","All markers"},Default="Nearest 6",
+    Flag="pl_radar_label_density",Callback=function(v)radar.labelMode=v end})
 RadarTab:Toggle({Title="Highlight focused player",Default=true,Flag="pl_radar_focus_emphasis",
     Callback=function(v)radar.emphasizeFocus=v end})
 RadarTab:Slider({Title="Headshot size",Min=16,Max=36,Default=23,Suffix=" px",
@@ -1556,29 +1788,42 @@ RadarTab:Slider({Title="Marker size",Min=4,Max=13,Default=7,Suffix=" px",
     Flag="pl_radar_marker",Callback=function(v)radar.dotSize=v end})
 RadarTab:Slider({Title="Radar refresh",Min=8,Max=30,Default=12,Suffix=" fps",
     Flag="pl_radar_refresh",Callback=function(v)radar.refresh=1/v end})
+RadarTab:Slider({Title="Panel transparency",Min=0,Max=80,Default=19,Suffix="%",
+    Flag="pl_radar_transparency",Callback=function(v)
+        radar.background=v
+        radarFrame.BackgroundTransparency=v/100
+    end})
 RadarTab:ButtonRow({
     {Title="Headshots only",Icon="user",Callback=function()
         Window:SetFlag("pl_radar_avatars",true)
         Window:SetFlag("pl_radar_names",false)
         Window:SetFlag("pl_radar_distances",false)
         Window:SetFlag("pl_radar_team_names",false)
+        Window:SetFlag("pl_radar_health",false)
     end},
     {Title="Classic dots",Icon="server",Callback=function()
         Window:SetFlag("pl_radar_avatars",false)
         Window:SetFlag("pl_radar_names",false)
         Window:SetFlag("pl_radar_distances",false)
         Window:SetFlag("pl_radar_team_names",false)
+        Window:SetFlag("pl_radar_health",false)
     end}
 })
 RadarTab:Paragraph("Blue = guards  |  Orange = inmates  |  Red = criminals. The bright marker shows your focused player.")
 
 local function updateRadarPosition(pos)
     radar.position=pos
+    local inset=Vector2.new(0,0)
+    pcall(function()inset=GuiService:GetGuiInset()end)
+    local viewport=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
+        or Vector2.new(1920,1080)
+    local safeTop=math.max(82,inset.Y+54)
+    local safeLeft=(UIS.TouchEnabled and viewport.X>=700) and 218 or 12
     local points={
-        ["Top right"]={Vector2.new(1,0),UDim2.new(1,-12,0,120)},
-        ["Top left"]={Vector2.new(0,0),UDim2.new(0,12,0,120)},
-        ["Bottom right"]={Vector2.new(1,1),UDim2.new(1,-12,1,-110)},
-        ["Bottom left"]={Vector2.new(0,1),UDim2.new(0,12,1,-110)}
+        ["Top right"]={Vector2.new(1,0),UDim2.new(1,-12,0,safeTop)},
+        ["Top left"]={Vector2.new(0,0),UDim2.new(0,safeLeft,0,safeTop)},
+        ["Bottom right"]={Vector2.new(1,1),UDim2.new(1,-12,1,-24)},
+        ["Bottom left"]={Vector2.new(0,1),UDim2.new(0,12,1,-24)}
     }
     local selected=points[pos] or points["Top right"]
     radarFrame.AnchorPoint=selected[1]
@@ -1587,6 +1832,8 @@ end
 RadarTab:Dropdown({Title="Overlay corner",
     Options={"Top right","Top left","Bottom right","Bottom left"},
     Default="Top right",Flag="pl_radar_pos",Callback=updateRadarPosition})
+RadarTab:Button({Title="Reset radar position",Icon="rotate-ccw",
+    Callback=function()updateRadarPosition(radar.position)end})
 -- Drag the radar on PC or Android. Changing the preset corner resets its position.
 local dragging=false
 local dragInput=nil
@@ -1659,10 +1906,11 @@ local function radarDot(player)
     label.Name="RadarName"
     label.AnchorPoint=Vector2.new(0.5,0)
     label.Position=UDim2.new(0.5,0,1,3)
-    label.Size=UDim2.fromOffset(116,39)
+    label.Size=UDim2.fromOffset(112,38)
     label.TextXAlignment=Enum.TextXAlignment.Center
     label.TextYAlignment=Enum.TextYAlignment.Top
-    label.BackgroundTransparency=1
+    label.BackgroundColor3=Color3.fromRGB(24,20,36)
+    label.BackgroundTransparency=0.18
     label.Font=Enum.Font.GothamBold
     label.TextSize=10
     label.TextStrokeTransparency=0.18
@@ -1670,6 +1918,12 @@ local function radarDot(player)
     label.Visible=false
     label.ZIndex=6
     label.Parent=marker
+    local labelCorner=Instance.new("UICorner",label)
+    labelCorner.CornerRadius=UDim.new(0,7)
+    local labelStroke=Instance.new("UIStroke",label)
+    labelStroke.Color=Color3.fromRGB(154,126,199)
+    labelStroke.Transparency=0.55
+    labelStroke.Thickness=1
     radar.dots[player]=marker
     return marker
 end
@@ -1705,12 +1959,30 @@ Window:Connect(RunService.Heartbeat,function(dt)
     local root=getRoot()
     local cam=workspace.CurrentCamera
     if not root or not cam then radarClear();return end
+    local look=cam.CFrame.LookVector
+    heading.Rotation=radar.rotate and 0 or math.deg(math.atan2(look.X,-look.Z))
     local forward=radar.rotate and cam.CFrame.LookVector or Vector3.new(0,0,-1)
     local front=Vector3.new(forward.X,0,forward.Z)
     front=front.Magnitude>0.01 and front.Unit or Vector3.new(0,0,-1)
     local right=Vector3.new(-front.Z,0,front.X)
     local maxMarker=radar.showAvatars and radar.avatarSize or radar.dotSize
     local maxPixels=math.max(10,(radar.size*0.5)-maxMarker*0.5-10)
+    local nearestLabels={}
+    if radar.labelMode=="Nearest 6" then
+        local candidates={}
+        for _,candidate in ipairs(Players:GetPlayers())do
+            local candidateRoot=candidate~=LocalPlayer and candidate.Character
+                and candidate.Character:FindFirstChild("HumanoidRootPart")
+            if candidateRoot then
+                table.insert(candidates,{player=candidate,
+                    distance=(candidateRoot.Position-root.Position).Magnitude})
+            end
+        end
+        table.sort(candidates,function(a,b)return a.distance<b.distance end)
+        for index=1,math.min(6,#candidates)do
+            nearestLabels[candidates[index].player]=true
+        end
+    end
     local shown=0
     for _,p in ipairs(Players:GetPlayers())do
         if p~=LocalPlayer then
@@ -1737,10 +2009,15 @@ Window:Connect(RunService.Heartbeat,function(dt)
                 if focused then markerSize=markerSize+4 end
                 dot.Size=UDim2.fromOffset(markerSize,markerSize)
                 local teamColor=getTeamColor(p)
+                local healthFraction=math.clamp(h.Health/math.max(h.MaxHealth,1),0,1)
+                local healthColor=Color3.fromRGB(
+                    math.floor(235*(1-healthFraction)+86*healthFraction),
+                    math.floor(82*(1-healthFraction)+225*healthFraction),104)
                 dot.BackgroundColor3=teamColor
                 local stroke=dot:FindFirstChildOfClass("UIStroke")
                 if stroke then
-                    stroke.Color=focused and Color3.fromRGB(245,222,255) or teamColor
+                    stroke.Color=focused and Color3.fromRGB(245,222,255)
+                        or (radar.healthColor and healthColor or teamColor)
                     stroke.Transparency=focused and 0 or 0.16
                     stroke.Thickness=focused and 2.8 or 1.8
                 end
@@ -1749,7 +2026,10 @@ Window:Connect(RunService.Heartbeat,function(dt)
                 local label=dot:FindFirstChild("RadarName")
                 if label then
                     local fields={}
-                    if radar.showNames then
+                    local labelsAllowed=radar.labelMode=="All markers"
+                        or (radar.labelMode=="Nearest 6" and nearestLabels[p])
+                        or (radar.labelMode=="Focused only" and focused)
+                    if radar.showNames and labelsAllowed then
                         if radar.nameFormat=="Username" then
                             table.insert(fields,"@"..p.Name)
                         elseif radar.nameFormat=="Both" then
@@ -1758,11 +2038,17 @@ Window:Connect(RunService.Heartbeat,function(dt)
                             table.insert(fields,p.DisplayName)
                         end
                     end
-                    if radar.showDistances then
+                    if radar.showDistances and labelsAllowed then
                         table.insert(fields,math.floor(flat.Magnitude).." studs")
                     end
-                    if radar.showTeams then
+                    if radar.showTeams and labelsAllowed then
                         table.insert(fields,p.Team and p.Team.Name or "Neutral")
+                    end
+                    if radar.showHealth and labelsAllowed then
+                        table.insert(fields,math.ceil(h.Health).." HP")
+                    end
+                    if radar.showElevation and labelsAllowed and math.abs(diff.Y)>=8 then
+                        table.insert(fields,(diff.Y>0 and "▲ " or "▼ ")..math.floor(math.abs(diff.Y)).." studs")
                     end
                     label.Visible=#fields>0
                     label.Text=table.concat(fields,"\n")
@@ -1945,5 +2231,8 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v1.7.1", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v2.0.0",
+    Text="Silent aim 2.0, weapon tuning, infinite ammo, ESP and radar loaded.",
+    Kind="success"})
 return Window
+
