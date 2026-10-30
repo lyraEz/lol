@@ -139,8 +139,8 @@ cursor.Parent = gui
 
 local panel = Instance.new("Frame")
 panel.Name = "ConfigHub"
-panel.Size = UDim2.fromOffset(350, 385)
-panel.Position = UDim2.new(0.5, -175, 0.5, -192)
+panel.Size = UDim2.fromOffset(350, 430)
+panel.Position = UDim2.new(0.5, -175, 0.5, -215)
 panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
 panel.BackgroundTransparency = 0.13
 panel.BorderSizePixel = 0
@@ -209,10 +209,14 @@ subtitle.TextColor3 = Color3.fromRGB(177, 151, 211)
 
 local sizeText = label("", 82, 13, true)
 local lockText = label("", 136, 13, true)
-local offsetText = label("", 210, 13, true)
+local offsetText = label("", 254, 13, true)
 local modeButton
 local hint
 local resetLockState
+-- Estado declarado antes dos botões; a integração Delta é inicializada depois.
+local deltaHidden = false
+local setDeltaHidden
+local deltaButton
 
 local function refresh()
     sizeText.Text = "Cursor size: " .. cursorSize
@@ -221,6 +225,11 @@ local function refresh()
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
     if modeButton then
         modeButton.Text = lockMode == "PC" and "Modo: PC (segurar RMB)" or "Modo: CENTRO (RMB alterna)"
+    end
+    if deltaButton then
+        deltaButton.Text = deltaHidden and "Delta: OCULTO  (mostrar)" or "Delta: VISÍVEL  (esconder)"
+        deltaButton.BackgroundColor3 = deltaHidden
+            and Color3.fromRGB(113, 55, 78) or Color3.fromRGB(77, 65, 123)
     end
     if hint then
         hint.Text = "Alt esquerdo / /e mob: hub  •  /e delta: Delta"
@@ -249,12 +258,16 @@ modeButton = button("", 20, 164, 308, function()
     saveConfig()
 end)
 
-button("X−", 20, 238, 62, function() offsetX -= 1 refresh() saveConfig() end)
-button("X+", 88, 238, 62, function() offsetX += 1 refresh() saveConfig() end)
-button("Y−", 158, 238, 62, function() offsetY -= 1 refresh() saveConfig() end)
-button("Y+", 226, 238, 62, function() offsetY += 1 refresh() saveConfig() end)
+deltaButton = button("", 20, 202, 308, function()
+    if setDeltaHidden then setDeltaHidden(not deltaHidden) end
+end)
 
-button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
+button("X−", 20, 286, 62, function() offsetX -= 1 refresh() saveConfig() end)
+button("X+", 88, 286, 62, function() offsetX += 1 refresh() saveConfig() end)
+button("Y−", 158, 286, 62, function() offsetY -= 1 refresh() saveConfig() end)
+button("Y+", 226, 286, 62, function() offsetY += 1 refresh() saveConfig() end)
+
+button("RESETAR CONFIGURAÇÕES", 20, 340, 308, function()
     if resetLockState then resetLockState() end
     cursorSize = DEFAULT_SIZE
     offsetX, offsetY = 0, 0
@@ -265,7 +278,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
     saveConfig()
 end)
 
-hint = label("Alt esquerdo / /e mob: hub  •  /e delta: Delta", 340, 10, false)
+hint = label("Alt esquerdo / /e mob: hub  •  /e delta: Delta", 391, 10, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -457,22 +470,25 @@ connect(RunService.RenderStepped, function()
     end
 end)
 
--- Delta: visível por padrão. Oculte somente com /e delta.
--- Sem botão na tela ou bind B. O controle é exclusivo de /e delta.
+-- Ocultação do Delta: detecção inicial apenas ao esconder e resposta a
+-- alterações do executor por eventos (sem varredura a cada 0,15 segundo).
+-- Não há botão flutuante nem bind de teclado: hub ou /e delta.
 local deltaRoot = CoreGui
 if type(gethui) == "function" then
     local ok, root = pcall(gethui)
     if ok and root then deltaRoot = root end
 end
-local deltaHidden = false
+
 local deltaState = {}
-local deltaScanElapsed = 0
+local deltaObservers = {}
 
 local function deltaAsset(path)
     path = tostring(path):lower()
     if path:find("internals", 1, true)
         or path:find("assets/i", 1, true)
-        or path:find("delta", 1, true) then return true end
+        or path:find("delta", 1, true) then
+        return true
+    end
     for i = 1, 18 do
         if path:find("i" .. i .. "%.") or path:match("i" .. i .. "$") then
             return true
@@ -482,82 +498,140 @@ local function deltaAsset(path)
 end
 
 local function rememberAndHide(obj, property)
-    if not obj or not obj.Parent then return end
-    if not deltaState[obj] then
-        local ok, oldValue = pcall(function() return obj[property] end)
+    if not deltaHidden or not obj or not obj.Parent then return end
+
+    local original = deltaState[obj]
+    if not original then
+        original = {}
+        deltaState[obj] = original
+    end
+    if original[property] == nil then
+        local ok, value = pcall(function() return obj[property] end)
         if not ok then return end
-        deltaState[obj] = {property = property, value = oldValue}
+        original[property] = value
+
+        local observers = deltaObservers[obj]
+        if not observers then
+            observers = {}
+            deltaObservers[obj] = observers
+        end
+        -- Se o Delta tentar se mostrar outra vez, ocultar somente esse
+        -- objeto alterado, sem buscar todos os GUIs em Heartbeat.
+        observers[property] = obj:GetPropertyChangedSignal(property):Connect(function()
+            if not session.alive or not deltaHidden or not obj.Parent then return end
+            if obj[property] == true then
+                pcall(function() obj[property] = false end)
+            end
+        end)
     end
-    pcall(function() obj[property] = false end)
+
+    pcall(function()
+        if obj[property] ~= false then obj[property] = false end
+    end)
 end
 
-local function scanAndSuppressDelta()
-    local roots = {CoreGui}
-    if deltaRoot ~= CoreGui then table.insert(roots, deltaRoot) end
-    local seen = {}
+local function inspectDeltaImage(obj)
+    if not deltaHidden or not session.alive then return end
+    if not (obj:IsA("ImageLabel") or obj:IsA("ImageButton")) then return end
+    if not obj.Parent or obj:IsDescendantOf(gui) then return end
+    if not deltaAsset(obj.Image) then return end
 
-    for _, root in ipairs(roots) do
-        for _, top in ipairs(root:GetChildren()) do
-            if not seen[top] and top ~= gui and top.Name ~= "RobloxGui"
-                and top.Name ~= GUI_NAME then
-                seen[top] = true
-                local hasIY = top:FindFirstChild("I") and top:FindFirstChild("Y")
-                if not hasIY then
-                    local foundDelta = false
-                    for _, desc in ipairs(top:GetDescendants()) do
-                        if (desc:IsA("ImageButton") or desc:IsA("ImageLabel"))
-                            and deltaAsset(desc.Image) then
-                            foundDelta = true
-                            if not top:IsA("ScreenGui") then
-                                rememberAndHide(desc, "Visible")
-                                if desc:IsA("GuiButton") then
-                                    pcall(function() desc.Active = false end)
-                                end
-                            end
-                        end
-                    end
-                    if foundDelta and top:IsA("ScreenGui") then
-                        rememberAndHide(top, "Enabled")
-                    end
-                end
+    local current = obj
+    local foundScreenGui, outerGui = nil, nil
+    while current and current ~= CoreGui and current ~= deltaRoot do
+        if current.Name == "RobloxGui" or current == gui then return end
+        if current:IsA("ScreenGui") then foundScreenGui = current end
+        if current:IsA("GuiObject") then outerGui = current end
+        current = current.Parent
+    end
+    if not current then return end
+
+    local target = foundScreenGui or outerGui or obj
+    if foundScreenGui and foundScreenGui:FindFirstChild("I")
+        and foundScreenGui:FindFirstChild("Y") then return end
+
+    if target:IsA("ScreenGui") then
+        rememberAndHide(target, "Enabled")
+    elseif target:IsA("GuiObject") then
+        rememberAndHide(target, "Visible")
+        if target:IsA("GuiButton") then
+            rememberAndHide(target, "Active")
+        end
+    end
+end
+
+local function inspectDrawingContainer()
+    local drawing = CoreGui:FindFirstChild("DrawingContainer")
+    if drawing and drawing:IsA("GuiObject") then
+        rememberAndHide(drawing, "Visible")
+    end
+end
+
+local function scanOnce(root)
+    if not root then return end
+    -- Executado só ao escolher ESCONDER, não em cada frame.
+    for _, obj in ipairs(root:GetDescendants()) do
+        if obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
+            inspectDeltaImage(obj)
+        end
+    end
+end
+
+local function restoreDelta()
+    -- Desconectar antes de restaurar, para evitar que a própria restauração
+    -- dispare a rotina de ocultação.
+    for _, observers in pairs(deltaObservers) do
+        for _, connection in pairs(observers) do
+            connection:Disconnect()
+        end
+    end
+    table.clear(deltaObservers)
+    for obj, old in pairs(deltaState) do
+        if obj.Parent then
+            for property, value in pairs(old) do
+                pcall(function() obj[property] = value end)
             end
         end
     end
-
-    local dc = CoreGui:FindFirstChild("DrawingContainer")
-    if dc and dc:IsA("GuiObject") then
-        rememberAndHide(dc, "Visible")
-    end
+    table.clear(deltaState)
 end
 
-local function setDeltaHidden(hidden)
+setDeltaHidden = function(hidden)
+    if not session.alive or deltaHidden == hidden then return end
     deltaHidden = hidden
-    if not hidden then
-        for obj, old in pairs(deltaState) do
-            if obj and obj.Parent then
-                pcall(function()
-                    obj[old.property] = old.value
-                end)
-                if obj:IsA("GuiButton") then
-                    pcall(function() obj.Active = true end)
-                end
-            end
+    if hidden then
+        scanOnce(CoreGui)
+        if deltaRoot ~= CoreGui and not deltaRoot:IsDescendantOf(CoreGui) then
+            scanOnce(deltaRoot)
         end
-        table.clear(deltaState)
+        inspectDrawingContainer()
     else
-        pcall(scanAndSuppressDelta)
+        restoreDelta()
     end
+    refresh()
     print("[MOBHUB] Delta " .. (hidden and "escondido" or "visível"))
 end
 
-connect(RunService.Heartbeat, function(dt)
+-- Novas interfaces criadas pelo executor são detectadas sem varredura
+-- contínua. Somente imagens adicionadas precisam ser inspecionadas.
+local function onGuiAdded(obj)
     if not session.alive or not deltaHidden then return end
-    deltaScanElapsed += dt
-    if deltaScanElapsed >= 0.15 then
-        deltaScanElapsed = 0
-        pcall(scanAndSuppressDelta)
+    if obj.Name == "DrawingContainer" then
+        inspectDrawingContainer()
+    elseif obj:IsA("ImageButton") or obj:IsA("ImageLabel") then
+        -- Permite que o executor atribua Image logo após fazer Parent.
+        task.defer(function()
+            if session.alive and deltaHidden and obj.Parent then
+                inspectDeltaImage(obj)
+            end
+        end)
     end
-end)
+end
+
+connect(CoreGui.DescendantAdded, onGuiAdded)
+if deltaRoot ~= CoreGui and not deltaRoot:IsDescendantOf(CoreGui) then
+    connect(deltaRoot.DescendantAdded, onGuiAdded)
+end
 
 local lastCommand, lastCommandAt = nil, 0
 local function handleChatCommand(text)
@@ -574,7 +648,7 @@ local function handleChatCommand(text)
         setHubVisible(not panel.Visible)
         print("[MOBHUB] Hub " .. (panel.Visible and "aberta" or "escondida"))
     else
-        setDeltaHidden(not deltaHidden)
+        if setDeltaHidden then setDeltaHidden(not deltaHidden) end
     end
 end
 
@@ -609,7 +683,7 @@ end)
 local oldStop = session.stop
 session.stop = function()
     if not session.alive then return end
-    setDeltaHidden(false)
+    if deltaHidden then setDeltaHidden(false) end
     oldStop()
 end
 
