@@ -355,12 +355,206 @@ Window:Connect(RunService.Heartbeat,function(dt)
 end)
 Window:Connect(Players.PlayerRemoving,clearItem)
 cleanup=function()
+
+    restoreCollision()
+    local model=LocalPlayer.Character
+    local hum=model and model:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if movement.speed then hum.WalkSpeed=16 end
+        if movement.jump then hum.UseJumpPower=true;hum.JumpPower=50 end
+    end
     if combatGui then combatGui:Destroy()end
     clearEsp()
     for key,value in pairs(original) do pcall(function()Lighting[key]=value end)end
     local h=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if h and workspace.CurrentCamera then workspace.CurrentCamera.CameraSubject=h end
 end
+
+
+-- Mobility & survival: old movement state is restored when options are disabled or hub unloads.
+local movement={speed=false,speedValue=16,jump=false,jumpValue=50,
+    noclip=false,infiniteJump=false,antiSit=false,antiIdle=false,antiFall=false}
+local oldCollision=setmetatable({}, {__mode="k"})
+local function restoreCollision()
+    for part,value in pairs(oldCollision) do
+        if part and part.Parent then pcall(function()part.CanCollide=value end)end
+        oldCollision[part]=nil
+    end
+end
+local Mov=Window:Tab({Title="Movement",Icon="move"})
+Mov:Section("Movement","Client-side adjustments, reapplied to each new character.")
+Mov:Toggle({Title="Custom walkspeed",Flag="pl_move_speedon",
+    Callback=function(v)movement.speed=v end})
+Mov:Slider({Title="Walkspeed",Min=16,Max=120,Default=16,
+    Flag="pl_move_speed",Callback=function(v)movement.speedValue=v end})
+Mov:Toggle({Title="Custom jump power",Flag="pl_move_jumpon",
+    Callback=function(v)movement.jump=v end})
+Mov:Slider({Title="Jump power",Min=50,Max=175,Default=50,
+    Flag="pl_move_jump",Callback=function(v)movement.jumpValue=v end})
+Mov:Toggle({Title="Noclip (local collisions)",Flag="pl_move_noclip",Callback=function(v)
+    movement.noclip=v
+    if not v then restoreCollision() end
+end})
+Mov:Toggle({Title="Infinite jump",Flag="pl_move_inf",Callback=function(v)movement.infiniteJump=v end})
+Mov:Toggle({Title="Anti sit",Flag="pl_move_antisit",Callback=function(v)movement.antiSit=v end})
+Mov:Toggle({Title="Prevent falling off map",Flag="pl_move_antifall",
+    Description="Returns you to your last safe position after falling below the map.",
+    Callback=function(v)movement.antiFall=v end})
+Mov:Button({Title="Reset movement",Icon="rotate-ccw",Callback=function()
+    movement.speed=false;movement.jump=false;movement.noclip=false
+    movement.infiniteJump=false;movement.antiSit=false;movement.antiFall=false
+    restoreCollision()
+    local model=LocalPlayer.Character
+    local hum=model and model:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed=16;hum.UseJumpPower=true;hum.JumpPower=50;hum.Sit=false end
+    Window:Status("Movement restored", "success")
+end})
+local lastSafe,moveClock= nil,0
+Window:Connect(UIS.JumpRequest,function()
+    if movement.infiniteJump then
+        local model=LocalPlayer.Character
+        local hum=model and model:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health>0 then hum:ChangeState(Enum.HumanoidStateType.Jumping)end
+    end
+end)
+Window:Connect(RunService.Stepped,function()
+    if not alive or not movement.noclip then return end
+    local char=LocalPlayer.Character
+    if not char then return end
+    for _,part in ipairs(char:GetDescendants())do
+        if part:IsA("BasePart") then
+            if oldCollision[part]==nil then oldCollision[part]=part.CanCollide end
+            part.CanCollide=false
+        end
+    end
+end)
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not alive then return end
+    moveClock=moveClock+dt
+    if moveClock<0.12 then return end
+    moveClock=0
+    local char=LocalPlayer.Character
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    local root=char and char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root or hum.Health<=0 then return end
+    if movement.speed then hum.WalkSpeed=movement.speedValue end
+    if movement.jump then hum.UseJumpPower=true;hum.JumpPower=movement.jumpValue end
+    if movement.antiSit then hum.Sit=false end
+    if root.Position.Y>25 and hum.FloorMaterial~=Enum.Material.Air then lastSafe=root.CFrame end
+    if movement.antiFall and root.Position.Y<-40 and lastSafe then
+        root.CFrame=lastSafe*CFrame.new(0,4,0)
+        root.AssemblyLinearVelocity=Vector3.zero
+    end
+end)
+Window:Connect(LocalPlayer.CharacterAdded,function()
+    restoreCollision()
+    lastSafe=nil
+end)
+
+-- Team and equipment tools query the live game structure instead of creating fake items.
+local TeamTools=Window:Tab({Title="Teams & Gear",Icon="shield"})
+TeamTools:Section("Teams","Server decides whether a team change is accepted. Criminals must cross their spawn.")
+local remoteFolder=workspace:FindFirstChild("Remote")
+local function remote(name)
+    return (workspace:FindFirstChild("Remote") or remoteFolder)
+        and (workspace:FindFirstChild("Remote") or remoteFolder):FindFirstChild(name)
+end
+local function requestTeam(color)
+    local event=remote("TeamEvent")
+    if not event or not event:IsA("RemoteEvent") then
+        Window:Notify({Title="Teams",Text="TeamEvent unavailable in this server.",Kind="warning"})
+        return
+    end
+    local ok,err=pcall(function()event:FireServer(color)end)
+    Window:Notify({Title="Team requested",
+        Text=ok and ("Requested "..color.."; server may refuse.") or tostring(err),
+        Kind=ok and "info" or "warning"})
+end
+TeamTools:ButtonRow({
+    {Title="Guards",Icon="shield",Callback=function()requestTeam("Bright blue")end},
+    {Title="Inmates",Icon="users",Callback=function()requestTeam("Bright orange")end},
+})
+TeamTools:Button({Title="Criminal spawn",Icon="navigation",
+    Description="Classic map. The game switches teams when you touch the spawn.",
+    Callback=function()
+        teleport(Vector3.new(-920,100,2138))
+    end})
+local weaponChoices={"M9","Remington 870","AK-47","MP5","M4A1","Taser","Hammer","Crude Knife"}
+local selectedWeapon="M9"
+local function findItem(name)
+    local items=workspace:FindFirstChild("Prison_ITEMS")
+    local giver=items and items:FindFirstChild("giver")
+    if not giver then return nil end
+    for _,child in ipairs(giver:GetChildren())do
+        if child.Name:lower()==name:lower() then return child end
+    end
+    return nil
+end
+local function requestItem(name)
+    local giver=findItem(name)
+    local handler=remote("ItemHandler")
+    local item=giver and giver:FindFirstChild("ITEMPICKUP",true)
+    if not giver or not handler or not item then
+        Window:Notify({Title="Gear",Text=name.." cannot be requested from this server.",Kind="warning"})
+        return
+    end
+    if not handler:IsA("RemoteFunction") then return end
+    local ok=pcall(function()handler:InvokeServer(item)end)
+    Window:Notify({Title="Gear",Text=ok and ("Requested "..name.."; restrictions still apply.") or
+        ("Could not request "..name),Kind=ok and "info" or "warning"})
+end
+TeamTools:Section("Weapons & items","Only items present in the live map. Paid equipment still requires ownership.")
+TeamTools:Dropdown({Title="Weapon",Options=weaponChoices,Default="M9",
+    Flag="pl_item",Callback=function(v)selectedWeapon=v end})
+TeamTools:ButtonRow({
+    {Title="Request",Icon="package",Primary=true,Callback=function()requestItem(selectedWeapon)end},
+    {Title="Go to item",Icon="navigation",Callback=function()
+        local item=findItem(selectedWeapon)
+        local part=item and item:FindFirstChildWhichIsA("BasePart",true)
+        if part then teleport(part.Position+Vector3.new(0,3,0))
+        else Window:Status("Item spawn unavailable", "warning") end
+    end},
+})
+TeamTools:Button({Title="Get starter weapons",Icon="crosshair",
+    Description="Requests M9, Remington and AK-47 one at a time.",
+    Callback=function()
+        task.spawn(function()
+            for _,name in ipairs({"M9","Remington 870","AK-47"})do
+                if not alive then return end
+                requestItem(name)
+                task.wait(0.35)
+            end
+        end)
+    end})
+local autoGear=false
+TeamTools:Toggle({Title="Get starter weapons after respawn",Flag="pl_autogear",
+    Callback=function(v)autoGear=v end})
+Window:Connect(LocalPlayer.CharacterAdded,function()
+    if autoGear then
+        task.delay(2,function()
+            if alive then
+                for _,name in ipairs({"M9","Remington 870","AK-47"})do
+                    if not alive then break end
+                    requestItem(name)
+                    task.wait(0.35)
+                end
+            end
+        end)
+    end
+end)
+local GearStatus=TeamTools:Label("Inventory: scanning...")
+TeamTools:Button({Title="Refresh inventory",Icon="refresh-cw",Callback=function()
+    local backpack=LocalPlayer:FindFirstChild("Backpack")
+    local total={}
+    for _,container in ipairs({backpack,LocalPlayer.Character}) do
+        if container then
+            for _,obj in ipairs(container:GetChildren())do
+                if obj:IsA("Tool")then table.insert(total,obj.Name)end
+            end
+        end
+    end
+    GearStatus:Set("Inventory ("..#total.."): "..(#total>0 and table.concat(total,", ") or "empty"))
+end})
 
 local Visuals = Window:Tab({Title="Visuals", Icon="eye"})
 Visuals:Section("Client lighting", "Only your local display is affected.")
@@ -375,6 +569,52 @@ Visuals:Slider({Title="Camera field of view",Min=50,Max=110,Default=70,Suffix="Â
     Flag="prison_fov",Callback=function(v)
         if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView=v end
     end})
+
+-- Navigation extras: bookmark, undo and dynamic discovery of current map parts.
+local savedBookmarks={}
+local function statusPoint(label)
+    local r=getRoot()
+    Window:Notify({Title=label,Text=r and
+        ("X "..math.floor(r.Position.X).." / Y "..math.floor(r.Position.Y).." / Z "..math.floor(r.Position.Z))
+        or "No character spawned",Kind="info"})
+end
+Map:Section("Custom bookmarks","Stored until this hub is unloaded.")
+local bookmarkSlot="1"
+Map:Dropdown({Title="Bookmark slot",Options={"1","2","3","4","5"},Default="1",
+    Callback=function(v)bookmarkSlot=v end})
+Map:ButtonRow({
+    {Title="Save here",Icon="bookmark",Callback=function()
+        local r=getRoot()
+        if r then savedBookmarks[bookmarkSlot]=r.CFrame;Window:Status("Saved slot "..bookmarkSlot,"success")end
+    end},
+    {Title="Go to slot",Icon="navigation",Callback=function()
+        local c=savedBookmarks[bookmarkSlot]
+        if c then
+            local r=getRoot()
+            if r then last.position=r.CFrame;r.CFrame=c end
+        else Window:Status("Bookmark slot "..bookmarkSlot.." is empty","warning")end
+    end},
+})
+Map:Button({Title="Copy current coordinates",Icon="copy",Callback=function()
+    local r=getRoot()
+    if r and type(setclipboard)=="function" then
+        local p=r.Position
+        local ok=pcall(setclipboard,string.format("Vector3.new(%.2f, %.2f, %.2f)",p.X,p.Y,p.Z))
+        Window:Status(ok and "Coordinates copied" or "Clipboard unavailable",ok and "success" or "warning")
+    else statusPoint("Current position")end
+end})
+Home:Section("Live status","Team and player count update without network requests.")
+local statusLabel=Home:Label("Updating...")
+local statusClock=0
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not alive then return end
+    statusClock=statusClock+dt
+    if statusClock<2 then return end
+    statusClock=0
+    statusLabel:Set("Team: "..(LocalPlayer.Team and LocalPlayer.Team.Name or "None")
+        .." | Players: "..#Players:GetPlayers().." | Place: "..game.PlaceId)
+end)
+
 local Settings=Window:SettingsTab()
 Settings:Button({Title="Restore lighting", Icon="rotate-ccw", Callback=function()
     for key,value in pairs(original) do Lighting[key]=value end
