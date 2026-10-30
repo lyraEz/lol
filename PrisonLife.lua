@@ -139,78 +139,136 @@ PlayersTab:ButtonRow({
 Window:Connect(Players.PlayerAdded,function()task.defer(refresh)end)
 Window:Connect(Players.PlayerRemoving,function()task.defer(refresh)end)
 
+-- ESP display options are independent: an outline-only configuration works
+-- without creating invisible/empty text boxes over players.
 local espEnabled=false
 local espTeamOnly=false
 local espRange=800
 local espItems={}
+local espOptions={
+    highlight=true,outline=true,fill=true,name=true,username=false,
+    team=true,distance=true,health=true,healthBar=false,weapon=false,
+    fontSize=13,fillOpacity=82,hideThroughWalls=false,compact=true
+}
 local function clearItem(p)
     local entry=espItems[p]
-    if entry then
-        entry.highlight:Destroy()
-        entry.gui:Destroy()
-        espItems[p]=nil
-    end
+    if not entry then return end
+    if entry.highlight then entry.highlight:Destroy() end
+    if entry.gui then entry.gui:Destroy() end
+    espItems[p]=nil
 end
 local function clearEsp()
     for p in pairs(espItems) do clearItem(p) end
 end
 local function getTeamColor(p)
     local name=p.Team and p.Team.Name:lower() or ""
-    if name:find("guard") then return Color3.fromRGB(110,169,255) end
-    if name:find("criminal") then return Color3.fromRGB(255,105,132) end
-    if name:find("inmate") or name:find("prison") then
+    if name:find("guard") or name:find("blue") then return Color3.fromRGB(110,169,255) end
+    if name:find("criminal") or name:find("red") then return Color3.fromRGB(255,105,132) end
+    if name:find("inmate") or name:find("prison") or name:find("orange") then
         return Color3.fromRGB(255,184,87)
     end
     return Color3.fromRGB(207,191,250)
 end
+local function makeEspEntry(p,model,head)
+    local h=Instance.new("Highlight")
+    h.Name="LyraPrisonHighlight"
+    h.Adornee=model
+    h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+    h.FillTransparency=0.82
+    h.OutlineTransparency=0.06
+    h.Parent=model
+    local gui=Instance.new("BillboardGui")
+    gui.Name="LyraPrisonTag"
+    gui.Adornee=head
+    gui.Size=UDim2.fromOffset(240,72)
+    gui.StudsOffsetWorldSpace=Vector3.new(0,3.35,0)
+    gui.AlwaysOnTop=true
+    gui.MaxDistance=espRange
+    gui.Parent=LocalPlayer:WaitForChild("PlayerGui")
+    local txt=Instance.new("TextLabel")
+    txt.Name="Fields"
+    txt.BackgroundTransparency=1
+    txt.TextStrokeTransparency=0.35
+    txt.TextSize=13
+    txt.Font=Enum.Font.GothamBold
+    txt.TextWrapped=true
+    txt.TextYAlignment=Enum.TextYAlignment.Center
+    txt.Size=UDim2.new(1,0,1,-12)
+    txt.Parent=gui
+    local barBg=Instance.new("Frame")
+    barBg.Name="HealthBarBack"
+    barBg.AnchorPoint=Vector2.new(0.5,1)
+    barBg.Position=UDim2.new(0.5,0,1,-4)
+    barBg.Size=UDim2.new(0.68,0,0,5)
+    barBg.BackgroundColor3=Color3.fromRGB(37,32,50)
+    barBg.BorderSizePixel=0
+    barBg.Parent=gui
+    local barBackCorner=Instance.new("UICorner",barBg)
+    barBackCorner.CornerRadius=UDim.new(1,0)
+    local healthFill=Instance.new("Frame")
+    healthFill.Name="HealthFill"
+    healthFill.Size=UDim2.fromScale(1,1)
+    healthFill.BackgroundColor3=Color3.fromRGB(94,235,165)
+    healthFill.BorderSizePixel=0
+    healthFill.Parent=barBg
+    local healthCorner=Instance.new("UICorner",healthFill)
+    healthCorner.CornerRadius=UDim.new(1,0)
+    local entry={model=model,highlight=h,gui=gui,text=txt,bar=barBg,fill=healthFill}
+    espItems[p]=entry
+    return entry
+end
 local function updateEsp()
     local myRoot=getRoot()
     if not espEnabled or not myRoot then clearEsp();return end
-    for _,p in ipairs(Players:GetPlayers()) do
+    for _,p in ipairs(Players:GetPlayers())do
         local model=p.Character
         local hum=model and model:FindFirstChildOfClass("Humanoid")
         local root=model and model:FindFirstChild("HumanoidRootPart")
         local head=model and model:FindFirstChild("Head")
-        local distance=root and (root.Position-myRoot.Position).Magnitude or math.huge
+        local dist=root and (root.Position-myRoot.Position).Magnitude or math.huge
         if p==LocalPlayer or not hum or hum.Health<=0 or not head
-            or distance>espRange
-            or (espTeamOnly and p.Team~=nil and p.Team==LocalPlayer.Team) then
+            or dist>espRange
+            or (espTeamOnly and p.Team and p.Team==LocalPlayer.Team) then
             clearItem(p)
         else
-            local item=espItems[p]
-            if item and item.model~=model then clearItem(p);item=nil end
-            if not item then
-                local h=Instance.new("Highlight")
-                h.Name="LyraPrisonHighlight"
-                h.Adornee=model
-                h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
-                h.FillTransparency=0.82
-                h.OutlineTransparency=0.06
-                h.Parent=model
-                local gui=Instance.new("BillboardGui")
-                gui.Name="LyraPrisonTag"
-                gui.Adornee=head
-                gui.Size=UDim2.fromOffset(220,55)
-                gui.StudsOffsetWorldSpace=Vector3.new(0,3,0)
-                gui.AlwaysOnTop=true
-                gui.Parent=LocalPlayer.PlayerGui
-                local txt=Instance.new("TextLabel")
-                txt.BackgroundTransparency=1
-                txt.TextStrokeTransparency=0.3
-                txt.TextSize=13
-                txt.Font=Enum.Font.GothamBold
-                txt.TextWrapped=true
-                txt.Size=UDim2.fromScale(1,1)
-                txt.Parent=gui
-                item={model=model,highlight=h,gui=gui,text=txt}
-                espItems[p]=item
-            end
+            local entry=espItems[p]
+            if entry and entry.model~=model then clearItem(p);entry=nil end
+            if not entry then entry=makeEspEntry(p,model,head) end
             local color=getTeamColor(p)
-            item.highlight.FillColor=color
-            item.highlight.OutlineColor=color
-            item.text.TextColor3=color
-            item.text.Text=p.DisplayName.."  |  "..(p.Team and p.Team.Name or "Neutral")
-                .."\n"..math.floor(distance).." studs  |  "..math.floor(hum.Health).." HP"
+            local opt=espOptions
+            entry.highlight.Enabled=opt.highlight and (opt.fill or opt.outline)
+            entry.highlight.DepthMode=opt.hideThroughWalls
+                and Enum.HighlightDepthMode.Occluded or Enum.HighlightDepthMode.AlwaysOnTop
+            entry.highlight.FillColor=color
+            entry.highlight.OutlineColor=color
+            entry.highlight.FillTransparency=opt.fill and opt.fillOpacity/100 or 1
+            entry.highlight.OutlineTransparency=opt.outline and 0.06 or 1
+            local fields={}
+            if opt.name then table.insert(fields,p.DisplayName) end
+            if opt.username then table.insert(fields,"@"..p.Name) end
+            if opt.team then table.insert(fields,p.Team and p.Team.Name or "Neutral") end
+            if opt.distance then table.insert(fields,math.floor(dist).." studs") end
+            if opt.health then
+                table.insert(fields,math.ceil(hum.Health).."/"..math.ceil(hum.MaxHealth).." HP")
+            end
+            if opt.weapon then
+                local tool=model:FindFirstChildOfClass("Tool")
+                if tool then table.insert(fields,tool.Name) end
+            end
+            local text=table.concat(fields,opt.compact and "  |  " or "\n")
+            entry.text.Text=text
+            entry.text.TextSize=opt.fontSize
+            entry.text.TextColor3=color
+            entry.text.Visible=#fields>0
+            entry.bar.Visible=opt.healthBar
+            entry.fill.Size=UDim2.fromScale(math.clamp(hum.Health/math.max(hum.MaxHealth,1),0,1),1)
+            local fraction=math.clamp(hum.Health/math.max(hum.MaxHealth,1),0,1)
+            entry.fill.BackgroundColor3=Color3.fromRGB(
+                math.floor(230*(1-fraction)+80*fraction),
+                math.floor(83*(1-fraction)+226*fraction),100)
+            entry.gui.MaxDistance=espRange
+            entry.gui.Size=UDim2.fromOffset(240,opt.compact and 66 or 114)
+            entry.gui.Enabled=entry.text.Visible or opt.healthBar
         end
     end
 end
