@@ -286,7 +286,7 @@ local function legalTarget(p)
 end
 local function pointer()
     local cameraNow=workspace.CurrentCamera
-    if UIS.TouchEnabled and not UIS.MouseEnabled then
+    if UIS.TouchEnabled then
         return cameraNow.ViewportSize*0.5
     end
     local position=UIS:GetMouseLocation()
