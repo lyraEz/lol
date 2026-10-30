@@ -1241,7 +1241,7 @@ end
 
 -- Lightweight 2D radar, local-only. Does not use Drawing or exploit-only APIs.
 local radar={on=false,range=500,size=170,position="Top right",dots={},last=0,
-    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7,refresh=0.0833)
+    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7,refresh=0.0833}
 local radarGui=Instance.new("ScreenGui")
 radarGui.Name="LyraPrisonRadar"
 radarGui.ResetOnSpawn=false
