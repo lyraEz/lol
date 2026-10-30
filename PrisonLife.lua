@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.4.0
+-- Lyra Prison Life hub v1.5.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.4.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.5.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -309,7 +309,7 @@ local function equippedFirearm()
     end
 end
 local function startSilentHook()
-    local remoteEvent=game:GetService("ReplicatedStorage"):FindFirstChild("ShootEvent")
+    local remoteEvent=game:GetService("ReplicatedStorage"):FindFirstChild("GunRemotes") and game:GetService("ReplicatedStorage").GunRemotes:FindFirstChild("ShootEvent")
     if not remoteEvent or not remoteEvent:IsA("RemoteEvent") then
         return false,"ShootEvent remote is missing"
     end
@@ -1233,5 +1233,5 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v1.4", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.5", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
