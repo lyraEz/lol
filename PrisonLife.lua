@@ -756,8 +756,60 @@ end})
 TeamESP:Toggle({Title="Ignore teammates",Flag="prison_team_ignore",Callback=function(v)espTeamOnly=v end})
 TeamESP:Slider({Title="Maximum distance",Min=100,Max=2000,Default=800,Suffix=" studs",
     Flag="prison_team_distance",Callback=function(v)espRange=v end})
-TeamESP:Button({Title="Clear visual highlights",Icon="trash",Callback=function()
-    espEnabled=false;clearEsp()
+TeamESP:Section("What to display", "Each option is independent. Keep only highlights or combine as many fields as you like.")
+TeamESP:Toggle({Title="Character highlights",Default=true,Flag="pl_esp_highlight",
+    Callback=function(v)espOptions.highlight=v end})
+TeamESP:Toggle({Title="Highlight outlines",Default=true,Flag="pl_esp_outlines",
+    Callback=function(v)espOptions.outline=v end})
+TeamESP:Toggle({Title="Highlight fill",Default=true,Flag="pl_esp_fill",
+    Callback=function(v)espOptions.fill=v end})
+TeamESP:Toggle({Title="Player display names",Default=true,Flag="pl_esp_names",
+    Callback=function(v)espOptions.name=v end})
+TeamESP:Toggle({Title="Username (@user)",Flag="pl_esp_usernames",
+    Callback=function(v)espOptions.username=v end})
+TeamESP:Toggle({Title="Team names",Default=true,Flag="pl_esp_teams",
+    Callback=function(v)espOptions.team=v end})
+TeamESP:Toggle({Title="Distance in studs",Default=true,Flag="pl_esp_distance",
+    Callback=function(v)espOptions.distance=v end})
+TeamESP:Toggle({Title="Health numbers",Default=true,Flag="pl_esp_health",
+    Callback=function(v)espOptions.health=v end})
+TeamESP:Toggle({Title="Health bars",Flag="pl_esp_healthbar",
+    Callback=function(v)espOptions.healthBar=v end})
+TeamESP:Toggle({Title="Equipped tool name",Flag="pl_esp_equipped",
+    Callback=function(v)espOptions.weapon=v end})
+TeamESP:Section("Appearance", "Control visual density, opacity and visibility.")
+TeamESP:Toggle({Title="Compact one-line labels",Default=true,Flag="pl_esp_compact",
+    Callback=function(v)espOptions.compact=v end})
+TeamESP:Toggle({Title="Hide ESP behind walls",Flag="pl_esp_occluded",
+    Description="Applies occlusion to highlights. Text labels remain visible if enabled.",
+    Callback=function(v)espOptions.hideThroughWalls=v end})
+TeamESP:Slider({Title="Label font size",Min=9,Max=19,Default=13,Suffix=" px",
+    Flag="pl_esp_font",Callback=function(v)espOptions.fontSize=v end})
+TeamESP:Slider({Title="Highlight fill transparency",Min=0,Max=100,Default=82,Suffix="%",
+    Flag="pl_esp_opacity",Callback=function(v)espOptions.fillOpacity=v end})
+TeamESP:ButtonRow({
+    {Title="Highlights only",Icon="eye",Callback=function()
+        for _,pair in ipairs({
+            {"pl_esp_highlight",true},{"pl_esp_outlines",true},{"pl_esp_fill",true},
+            {"pl_esp_names",false},{"pl_esp_usernames",false},{"pl_esp_teams",false},
+            {"pl_esp_distance",false},{"pl_esp_health",false},
+            {"pl_esp_healthbar",false},{"pl_esp_equipped",false}
+        })do Window:SetFlag(pair[1],pair[2])end
+        Window:SetFlag("prison_team_esp",true)
+    end},
+    {Title="All details",Icon="users",Callback=function()
+        for _,name in ipairs({"pl_esp_highlight","pl_esp_outlines","pl_esp_fill",
+            "pl_esp_names","pl_esp_usernames","pl_esp_teams","pl_esp_distance",
+            "pl_esp_health","pl_esp_healthbar","pl_esp_equipped"})do
+            Window:SetFlag(name,true)
+        end
+        Window:SetFlag("prison_team_esp",true)
+    end}
+})
+TeamESP:Button({Title="Disable ESP and clear objects",Icon="trash",Callback=function()
+    Window:SetFlag("prison_team_esp",false)
+    espEnabled=false
+    clearEsp()
 end})
 local lastEsp=0
 Window:Connect(RunService.Heartbeat,function(dt)
