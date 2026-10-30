@@ -1336,61 +1336,110 @@ Window:Connect(UIS.InputEnded,function(input)
     end
 end)
 
+local radarInfo=RadarTab:Label("Radar inactive")
 local function radarDot(player)
-    local d=radar.dots[player]
-    if d then return d end
-    d=Instance.new("Frame")
-    d.Name="PlayerMarker"
-    d.Size=UDim2.fromOffset(6,6)
-    d.AnchorPoint=Vector2.new(0.5,0.5)
-    d.BackgroundColor3=getTeamColor(player)
-    d.BorderSizePixel=0
-    d.ZIndex=3
-    d.Parent=radarFrame
-    local dotRound=Instance.new("UICorner",d)
+    local marker=radar.dots[player]
+    if marker then return marker end
+    marker=Instance.new("Frame")
+    marker.Name="PlayerMarker"
+    marker.Size=UDim2.fromOffset(radar.dotSize,radar.dotSize)
+    marker.AnchorPoint=Vector2.new(0.5,0.5)
+    marker.BackgroundColor3=getTeamColor(player)
+    marker.BorderSizePixel=0
+    marker.ZIndex=4
+    marker.Parent=radarFrame
+    local dotRound=Instance.new("UICorner",marker)
     dotRound.CornerRadius=UDim.new(1,0)
-    radar.dots[player]=d
-    return d
+    local markStroke=Instance.new("UIStroke",marker)
+    markStroke.Color=Color3.fromRGB(250,240,255)
+    markStroke.Thickness=1.7
+    markStroke.Transparency=1
+    local label=Instance.new("TextLabel")
+    label.Name="RadarName"
+    label.Position=UDim2.fromOffset(7,-6)
+    label.Size=UDim2.fromOffset(85,17)
+    label.TextXAlignment=Enum.TextXAlignment.Left
+    label.BackgroundTransparency=1
+    label.Font=Enum.Font.GothamBold
+    label.TextSize=9
+    label.TextStrokeTransparency=0.2
+    label.Visible=false
+    label.ZIndex=5
+    label.Parent=marker
+    radar.dots[player]=marker
+    return marker
 end
 local function radarClear(player)
     if player then
-        local d=radar.dots[player]
-        if d then d:Destroy();radar.dots[player]=nil end
+        local dot=radar.dots[player]
+        if dot then dot:Destroy();radar.dots[player]=nil end
     else
-        for p,d in pairs(radar.dots)do d:Destroy();radar.dots[p]=nil end
+        for p,dot in pairs(radar.dots)do
+            dot:Destroy()
+            radar.dots[p]=nil
+        end
     end
 end
 Window:Connect(Players.PlayerRemoving,radarClear)
+local radarSummaryClock=0
 Window:Connect(RunService.Heartbeat,function(dt)
-    if not alive or not radar.on then return end
+    if not alive then return end
+    radarFrame.Visible=radar.on and (radar.showWithHub or not Window.Visible)
+    if not radar.on then return end
     radar.last=radar.last+dt
-    if radar.last<0.22 then return end
+    if radar.last<(radar.refresh or 0.05) then return end
     radar.last=0
     local root=getRoot()
     local cam=workspace.CurrentCamera
     if not root or not cam then radarClear();return end
-    local right=cam.CFrame.RightVector
-    local front=cam.CFrame.LookVector
+    local forward=radar.rotate and cam.CFrame.LookVector or Vector3.new(0,0,-1)
+    local front=Vector3.new(forward.X,0,forward.Z)
+    front=front.Magnitude>0.01 and front.Unit or Vector3.new(0,0,-1)
+    local right=Vector3.new(-front.Z,0,front.X)
     local maxPixels=(radar.size*0.5)-12
+    local shown=0
     for _,p in ipairs(Players:GetPlayers())do
         if p~=LocalPlayer then
             local c=p.Character
             local h=c and c:FindFirstChildOfClass("Humanoid")
             local r=c and c:FindFirstChild("HumanoidRootPart")
-            local diff=r and r.Position-root.Position
-            if not h or h.Health<=0 or not diff or diff.Magnitude>radar.range then
+            local diff=r and (r.Position-root.Position)
+            local flat=diff and Vector3.new(diff.X,0,diff.Z)
+            local sameTeam=LocalPlayer.Team and p.Team==LocalPlayer.Team
+            if not h or h.Health<=0 or not flat or flat.Magnitude>radar.range
+                or (not radar.showAllies and sameTeam) then
                 radarClear(p)
             else
-                local flat=Vector3.new(diff.X,0,diff.Z)
-                local x=math.clamp(flat:Dot(right)/radar.range,-1,1)
-                local y=math.clamp(flat:Dot(front)/radar.range,-1,1)
+                shown=shown+1
+                local x=flat:Dot(right)/radar.range
+                local y=flat:Dot(front)/radar.range
+                local mag=math.sqrt(x*x+y*y)
+                if mag>1 then x=x/mag; y=y/mag end
                 local dot=radarDot(p)
                 dot.Position=UDim2.new(0.5,x*maxPixels,0.5,-y*maxPixels)
+                local focused=combat.selectedPlayer~="" and p.Name==combat.selectedPlayer
+                local d=focused and radar.dotSize+5 or radar.dotSize
+                dot.Size=UDim2.fromOffset(d,d)
                 dot.BackgroundColor3=getTeamColor(p)
+                local stroke=dot:FindFirstChildOfClass("UIStroke")
+                if stroke then stroke.Transparency=focused and 0 or 1 end
+                local label=dot:FindFirstChild("RadarName")
+                if label then
+                    label.Visible=radar.showNames or focused
+                    label.Text=p.DisplayName
+                    label.TextColor3=getTeamColor(p)
+                end
             end
         end
     end
+    radarSummaryClock=radarSummaryClock+(radar.refresh or 0.05)
+    if radarSummaryClock>=1 then
+        radarSummaryClock=0
+        radarTitle.Text=radar.rotate and "PRISON RADAR · CAMERA" or "PRISON RADAR · NORTH"
+        radarInfo:Set("Tracking "..shown.." players within "..radar.range.." studs")
+    end
 end)
+
 local radarBaseCleanup=cleanup
 cleanup=function()
     radarClear()
