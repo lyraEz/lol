@@ -1373,7 +1373,8 @@ end
 local radar={on=false,range=500,size=170,position="Top right",dots={},last=0,
     showAllies=true,showNames=false,showAvatars=true,showDistances=false,
     showTeams=false,nameFormat="Display name",avatarSize=23,rotate=true,
-    showWithHub=false,dotSize=7,refresh=0.0833,emphasizeFocus=true}
+    showWithHub=false,dotSize=7,refresh=0.0833,emphasizeFocus=true,
+    guards=true,inmates=true,criminals=true,neutral=true}
 local radarGui=Instance.new("ScreenGui")
 radarGui.Name="LyraPrisonRadar"
 radarGui.ResetOnSpawn=false
@@ -1498,6 +1499,16 @@ RadarTab:Toggle({Title="Highlight focused player",Default=true,Flag="pl_radar_fo
     Callback=function(v)radar.emphasizeFocus=v end})
 RadarTab:Slider({Title="Headshot size",Min=16,Max=36,Default=23,Suffix=" px",
     Flag="pl_radar_avatar_size",Callback=function(v)radar.avatarSize=v end})
+RadarTab:Section("Team filter", "Choose which teams appear on the map.")
+RadarTab:Toggle({Title="Guards on radar",Default=true,Flag="pl_radar_guards",
+    Callback=function(v)radar.guards=v end})
+RadarTab:Toggle({Title="Inmates on radar",Default=true,Flag="pl_radar_inmates",
+    Callback=function(v)radar.inmates=v end})
+RadarTab:Toggle({Title="Criminals on radar",Default=true,Flag="pl_radar_criminals",
+    Callback=function(v)radar.criminals=v end})
+RadarTab:Toggle({Title="Neutral players on radar",Default=true,Flag="pl_radar_neutral",
+    Callback=function(v)radar.neutral=v end})
+RadarTab:Section("Radar behavior", "Control orientation, dragging and overlay visibility.")
 RadarTab:Toggle({Title="Rotate with camera",Default=true,Flag="pl_radar_rotate",
     Callback=function(v)radar.rotate=v end})
 RadarTab:Toggle({Title="Keep radar visible with hub",Flag="pl_radar_overui",
@@ -1506,6 +1517,20 @@ RadarTab:Slider({Title="Marker size",Min=4,Max=13,Default=7,Suffix=" px",
     Flag="pl_radar_marker",Callback=function(v)radar.dotSize=v end})
 RadarTab:Slider({Title="Radar refresh",Min=8,Max=30,Default=12,Suffix=" fps",
     Flag="pl_radar_refresh",Callback=function(v)radar.refresh=1/v end})
+RadarTab:ButtonRow({
+    {Title="Headshots only",Icon="user",Callback=function()
+        Window:SetFlag("pl_radar_avatars",true)
+        Window:SetFlag("pl_radar_names",false)
+        Window:SetFlag("pl_radar_distances",false)
+        Window:SetFlag("pl_radar_team_names",false)
+    end},
+    {Title="Classic dots",Icon="server",Callback=function()
+        Window:SetFlag("pl_radar_avatars",false)
+        Window:SetFlag("pl_radar_names",false)
+        Window:SetFlag("pl_radar_distances",false)
+        Window:SetFlag("pl_radar_team_names",false)
+    end}
+})
 RadarTab:Paragraph("Blue = guards  |  Orange = inmates  |  Red = criminals. The bright marker shows your focused player.")
 
 local function updateRadarPosition(pos)
@@ -1621,6 +1646,15 @@ local function radarClear(player)
     end
 end
 Window:Connect(Players.PlayerRemoving,radarClear)
+local function radarTeamAllowed(p)
+    local team=p.Team and p.Team.Name:lower() or ""
+    if team:find("guard") or team:find("blue") then return radar.guards end
+    if team:find("criminal") or team:find("red") then return radar.criminals end
+    if team:find("inmate") or team:find("prison") or team:find("orange") then
+        return radar.inmates
+    end
+    return radar.neutral
+end
 local radarSummaryClock=0
 Window:Connect(RunService.Heartbeat,function(dt)
     if not alive then return end
@@ -1648,7 +1682,7 @@ Window:Connect(RunService.Heartbeat,function(dt)
             local flat=diff and Vector3.new(diff.X,0,diff.Z)
             local sameTeam=LocalPlayer.Team and p.Team==LocalPlayer.Team
             if not h or h.Health<=0 or not flat or flat.Magnitude>radar.range
-                or (not radar.showAllies and sameTeam) then
+                or (not radar.showAllies and sameTeam) or not radarTeamAllowed(p) then
                 radarClear(p)
             else
                 shown=shown+1
