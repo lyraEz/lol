@@ -1616,7 +1616,8 @@ Window:Connect(RunService.Heartbeat,function(dt)
     local front=Vector3.new(forward.X,0,forward.Z)
     front=front.Magnitude>0.01 and front.Unit or Vector3.new(0,0,-1)
     local right=Vector3.new(-front.Z,0,front.X)
-    local maxPixels=(radar.size*0.5)-12
+    local maxMarker=radar.showAvatars and radar.avatarSize or radar.dotSize
+    local maxPixels=math.max(10,(radar.size*0.5)-maxMarker*0.5-10)
     local shown=0
     for _,p in ipairs(Players:GetPlayers())do
         if p~=LocalPlayer then
@@ -1637,17 +1638,42 @@ Window:Connect(RunService.Heartbeat,function(dt)
                 if mag>1 then x=x/mag; y=y/mag end
                 local dot=radarDot(p)
                 dot.Position=UDim2.new(0.5,x*maxPixels,0.5,-y*maxPixels)
-                local focused=combat.selectedPlayer~="" and p.Name==combat.selectedPlayer
-                local d=focused and radar.dotSize+5 or radar.dotSize
-                dot.Size=UDim2.fromOffset(d,d)
-                dot.BackgroundColor3=getTeamColor(p)
+                local focused=radar.emphasizeFocus
+                    and combat.selectedPlayer~="" and p.Name==combat.selectedPlayer
+                local markerSize=radar.showAvatars and radar.avatarSize or radar.dotSize
+                if focused then markerSize=markerSize+4 end
+                dot.Size=UDim2.fromOffset(markerSize,markerSize)
+                local teamColor=getTeamColor(p)
+                dot.BackgroundColor3=teamColor
                 local stroke=dot:FindFirstChildOfClass("UIStroke")
-                if stroke then stroke.Transparency=focused and 0 or 1 end
+                if stroke then
+                    stroke.Color=focused and Color3.fromRGB(245,222,255) or teamColor
+                    stroke.Transparency=focused and 0 or 0.16
+                    stroke.Thickness=focused and 2.8 or 1.8
+                end
+                local photo=dot:FindFirstChild("Headshot")
+                if photo then photo.Visible=radar.showAvatars end
                 local label=dot:FindFirstChild("RadarName")
                 if label then
-                    label.Visible=radar.showNames or focused
-                    label.Text=p.DisplayName
-                    label.TextColor3=getTeamColor(p)
+                    local fields={}
+                    if radar.showNames then
+                        if radar.nameFormat=="Username" then
+                            table.insert(fields,"@"..p.Name)
+                        elseif radar.nameFormat=="Both" then
+                            table.insert(fields,p.DisplayName.." (@"..p.Name..")")
+                        else
+                            table.insert(fields,p.DisplayName)
+                        end
+                    end
+                    if radar.showDistances then
+                        table.insert(fields,math.floor(flat.Magnitude).." studs")
+                    end
+                    if radar.showTeams then
+                        table.insert(fields,p.Team and p.Team.Name or "Neutral")
+                    end
+                    label.Visible=#fields>0
+                    label.Text=table.concat(fields,"\n")
+                    label.TextColor3=focused and Color3.fromRGB(245,222,255) or teamColor
                 end
             end
         end
