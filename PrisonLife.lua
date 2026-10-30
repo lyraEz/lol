@@ -221,7 +221,8 @@ local Camera=workspace.CurrentCamera
 local combat={
     aim=false,hold=false,held=false,trigger=false,showCircle=true,
     radius=180,smooth=0.24,part="Head",wall=true,team=true,
-    guards=true,inmates=true,criminals=true,triggerCooldown=0.22}
+    guards=true,inmates=true,criminals=true,triggerCooldown=0.22,
+    maxDistance=800,selectedPlayer="",focusOnly=false,priority="Crosshair"}
 local combatGui=Instance.new("ScreenGui")
 combatGui.Name="LyraPrisonCombat"
 combatGui.ResetOnSpawn=false
