@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.5.0
+-- Lyra Prison Life hub v1.6.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.5.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.6.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -452,7 +452,7 @@ local function startSilentHook()
     end
     controller.remote=remoteEvent
     controller.target=function()
-        if not alive or not silent.enabled or not equippedFirearm() then return nil end
+        if not alive or not silent.enabled then return nil end
         return closestTarget(silent.maxDistance, silent.radius, silent.ignoreFov, silent.wall, silent.part)
     end
     controller.chance=silent.hitChance
@@ -485,7 +485,7 @@ CombatTab:Toggle({Title="Enable silent aim",Flag="pl_combat_silent",Callback=fun
             Window:Status("Silent aim unavailable: "..tostring(why),"warning")
         end
         task.defer(function()if alive then Window:SetFlag("pl_combat_silent",false)end end)
-    else Window:Status("Silent aim enabled; equip a supported firearm.","success")end
+    else Window:Status("Silent hook installed. Fire your weapon to verify observed/changed shots.","success")end
 end})
 CombatTab:Slider({Title="Silent hit chance",Min=1,Max=100,Default=95,Suffix="%",
     Flag="pl_combat_hitchance",Callback=function(value)
@@ -1658,5 +1658,5 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v1.5", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.6", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
