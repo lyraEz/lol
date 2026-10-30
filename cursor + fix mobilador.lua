@@ -35,7 +35,9 @@ local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
 local cursorSize = DEFAULT_SIZE
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
--- PC: LockCenter enquanto segura RMB. CENTRO: LockCenter permanente (1ª pessoa).
+-- PC: segurar RMB para girar. CENTRO: clique RMB alterna trava/destrava.
+-- Migração: versões antigas salvavam CENTRO como trava permanente.
+local MOUSE_MODE_CONFIG_VERSION = 2
 local lockMode = "PC"
 
 local function configSnapshot()
@@ -44,7 +46,8 @@ local function configSnapshot()
         offsetX = offsetX,
         offsetY = offsetY,
         cursorEnabled = cursorEnabled,
-        lockMode = lockMode
+        lockMode = lockMode,
+        mouseModeConfigVersion = MOUSE_MODE_CONFIG_VERSION
     }
 end
 
@@ -75,7 +78,13 @@ local function loadConfig()
         offsetX = math.floor(tonumber(data.offsetX) or 0)
         offsetY = math.floor(tonumber(data.offsetY) or 0)
         if type(data.cursorEnabled) == "boolean" then cursorEnabled = data.cursorEnabled end
-        if data.lockMode == "PC" or data.lockMode == "CENTRO" then lockMode = data.lockMode end
+        if data.mouseModeConfigVersion == MOUSE_MODE_CONFIG_VERSION
+            and (data.lockMode == "PC" or data.lockMode == "CENTRO") then
+            lockMode = data.lockMode
+        else
+            -- Nunca reaplicar automaticamente a trava permanente das builds antigas.
+            lockMode = "PC"
+        end
     end
 end
 
@@ -207,14 +216,14 @@ local resetLockState
 
 local function refresh()
     sizeText.Text = "Cursor size: " .. cursorSize
-    lockText.Text = "Fix Mobilador: " .. (lockMode == "PC" and "RMB segurado" or "sempre centro")
+    lockText.Text = "Fix Mobilador: " .. (lockMode == "PC" and "segurar RMB" or "clique RMB ON/OFF")
     offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
     if modeButton then
-        modeButton.Text = lockMode == "PC" and "Modo: PC (segurar RMB)" or "Modo: CENTRO (1ª pessoa)"
+        modeButton.Text = lockMode == "PC" and "Modo: PC (segurar RMB)" or "Modo: CENTRO (RMB alterna)"
     end
     if hint then
-        hint.Text = "/e mob: hub  •  /e delta: ocultar Delta"
+        hint.Text = "Alt esquerdo / /e mob: hub  •  /e delta: Delta"
     end
 end
 
@@ -256,7 +265,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
     saveConfig()
 end)
 
-hint = label("/e mob: hub  •  /e delta: Delta", 340, 11, false)
+hint = label("Alt esquerdo / /e mob: hub  •  /e delta: Delta", 340, 10, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -282,19 +291,88 @@ connect(UIS.InputEnded, function(input)
     end
 end)
 
--- Controle de mouse: usa o fluxo nativo confirmado pelo usuário.
--- RenderStepped reimpõe LockCenter durante RMB. O modo CENTRO
--- representa APENAS_PRIMEIRA_PESSOA = true do script de referência.
-local lastMouseBehavior = nil
+-- O motor Roblox precisa de LockCenter a cada RenderStepped para controlar
+-- a câmera como no fix nativo fornecido pelo usuário. O clique e sua soltura
+-- são acompanhados também por eventos, porque o polling do mouse pode ficar
+-- "preso" em true em alguns clientes Android após soltar o botão.
+local rmbHeld = false
+local rmbReleased = false
+local physicalRmbWasDown = false
+local centerLatched = false
+local leftAltHeld = false
+local currentLockRequested = false
+local ownedMouseLock = false
+
 local function unlockMouse()
-    if lastMouseBehavior == Enum.MouseBehavior.LockCenter
-        and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then
-        pcall(function()
-            UIS.MouseBehavior = Enum.MouseBehavior.Default
-        end)
+    currentLockRequested = false
+    if ownedMouseLock and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then
+        pcall(function() UIS.MouseBehavior = Enum.MouseBehavior.Default end)
     end
-    lastMouseBehavior = nil
+    ownedMouseLock = false
 end
+
+local function rightMouseDown()
+    local ok, down = pcall(function()
+        return UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+    end)
+    return ok and down or false
+end
+
+local function beginRmb()
+    if rmbHeld then return end
+    rmbHeld = true
+    rmbReleased = false
+    if lockMode == "CENTRO" and not panel.Visible then
+        centerLatched = not centerLatched
+    end
+end
+
+local function endRmb()
+    rmbHeld = false
+    -- Prioridade para InputEnded mesmo se IsMouseButtonPressed ficar stale.
+    rmbReleased = true
+end
+
+local function setHubVisible(visible)
+    if panel.Visible == visible then return end
+    panel.Visible = visible
+    if visible then
+        -- Abrir hub nunca deixa o mouse preso, mesmo no CENTRO.
+        centerLatched = false
+        endRmb()
+    end
+end
+
+resetLockState = function()
+    centerLatched = false
+    endRmb()
+    -- Evita nova captura a partir de um IsMouseButtonPressed antigo.
+    physicalRmbWasDown = rightMouseDown()
+end
+
+connect(UIS.InputBegan, function(input, gameProcessed)
+    if not session.alive then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if not panel.Visible then beginRmb() end
+        return
+    end
+    if input.KeyCode == Enum.KeyCode.LeftAlt and not leftAltHeld then
+        leftAltHeld = true
+        local focused = UIS:GetFocusedTextBox()
+        if not focused then
+            setHubVisible(not panel.Visible)
+        end
+    end
+end)
+
+connect(UIS.InputEnded, function(input)
+    if not session.alive then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        endRmb()
+    elseif input.KeyCode == Enum.KeyCode.LeftAlt then
+        leftAltHeld = false
+    end
+end)
 
 session.stop = function()
     if not session.alive then return end
@@ -308,10 +386,6 @@ session.stop = function()
     if env[SESSION_KEY] == session then env[SESSION_KEY] = nil end
 end
 
-resetLockState = function()
-    unlockMouse()
-end
-
 pcall(function() UIS.MouseIconEnabled = false end)
 
 connect(RunService.RenderStepped, function()
@@ -322,30 +396,45 @@ connect(RunService.RenderStepped, function()
     end
 
     if not UIS.MouseEnabled then
+        if currentLockRequested then unlockMouse() end
         cursor.Visible = false
         return
     end
 
-    local rightHeld = false
-    pcall(function()
-        rightHeld = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-    end)
+    local physicalDown = rightMouseDown()
+    if physicalDown and not physicalRmbWasDown then
+        -- Fallback quando o Android não encaminha InputBegan.
+        if not rmbHeld then beginRmb() end
+    elseif not physicalDown and physicalRmbWasDown then
+        -- Fallback quando o Android não encaminha InputEnded.
+        endRmb()
+    end
+    physicalRmbWasDown = physicalDown
 
-    -- O método funcional: alterna o MouseBehavior dentro de RenderStepped.
-    -- O painel aberto libera o mouse para interagir com os controles.
-    local lockRequested = not panel.Visible and (lockMode == "CENTRO" or rightHeld)
+    -- O InputEnded tem precedência sobre polling "true" preso.
+    local rightHeld = rmbHeld or (physicalDown and not rmbReleased)
+    local lockRequested = not panel.Visible
+        and ((lockMode == "PC" and rightHeld)
+            or (lockMode == "CENTRO" and centerLatched))
+    currentLockRequested = lockRequested
+
+    -- Mesmo método do fix que funcionou: escrever o modo no RenderStepped.
+    -- Só mudamos quando o valor realmente diverge, para evitar escritas nativas extras.
     local desired = lockRequested
         and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
     if UIS.MouseBehavior ~= desired then
-        pcall(function() UIS.MouseBehavior = desired end)
+        local ok = pcall(function() UIS.MouseBehavior = desired end)
+        if ok and lockRequested then ownedMouseLock = true end
+    elseif lockRequested then
+        ownedMouseLock = true
     end
-    lastMouseBehavior = desired
+    if not lockRequested then ownedMouseLock = false end
 
     if cursorEnabled then
         if UIS.MouseIconEnabled then
             pcall(function() UIS.MouseIconEnabled = false end)
         end
-        local pos = UIS:GetMouseLocation()
+        local pos
         if lockRequested then
             local camera = workspace.CurrentCamera
             if camera then
@@ -353,6 +442,7 @@ connect(RunService.RenderStepped, function()
                 pos = Vector2.new(view.X * 0.5 - cursorSize * 0.5, view.Y * 0.5 - cursorSize * 0.5)
             end
         end
+        pos = pos or UIS:GetMouseLocation()
         cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
         cursor.Visible = true
     else
@@ -364,7 +454,7 @@ connect(RunService.RenderStepped, function()
 end)
 
 -- Delta: visível por padrão. Oculte somente com /e delta.
--- Sem botão na tela, bind B ou controle na hub.
+-- Sem botão na tela ou bind B. O controle é exclusivo de /e delta.
 local deltaRoot = CoreGui
 if type(gethui) == "function" then
     local ok, root = pcall(gethui)
@@ -477,7 +567,7 @@ local function handleChatCommand(text)
     lastCommand, lastCommandAt = command, now
 
     if command == "mob" then
-        panel.Visible = not panel.Visible
+        setHubVisible(not panel.Visible)
         print("[MOBHUB] Hub " .. (panel.Visible and "aberta" or "escondida"))
     else
         setDeltaHidden(not deltaHidden)
@@ -520,4 +610,4 @@ session.stop = function()
 end
 
 print("[MOBHUB] Fix Mobilador carregado. /e mob = hub | /e delta = Delta")
-print("[MOBHUB] Modo PC: segurar RMB. Modo CENTRO: primeira pessoa permanente.")
+print("[MOBHUB] Modo PC: segurar RMB. Modo CENTRO: clique RMB alterna lock.")
