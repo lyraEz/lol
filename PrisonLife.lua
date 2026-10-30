@@ -538,7 +538,7 @@ Window:Connect(RunService.Heartbeat,function(dt)
             .." | unknown: "..tostring(hook.unsupported or 0)
             .." | payload: "..tostring(hook.lastFormat or "-"))
     end
-end})
+end)
 
 CombatTab:Toggle({Title="Enable camera aim",Flag="pl_combat_aim",Callback=function(v)combat.aim=v end})
 CombatTab:Toggle({Title="Hold E / right mouse to aim",Flag="pl_combat_hold",
