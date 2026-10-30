@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.0.0
+-- Lyra Prison Life hub v1.1.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.0.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.1.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -782,6 +782,140 @@ cleanup=function()
     baseCleanup()
 end
 
+
+-- Lightweight 2D radar, local-only. Does not use Drawing or exploit-only APIs.
+local radar={on=false,range=500,size=150,position="Top right",dots={},last=0}
+local radarGui=Instance.new("ScreenGui")
+radarGui.Name="LyraPrisonRadar"
+radarGui.ResetOnSpawn=false
+radarGui.IgnoreGuiInset=true
+radarGui.DisplayOrder=15
+radarGui.Parent=LocalPlayer:WaitForChild("PlayerGui")
+local radarFrame=Instance.new("Frame")
+radarFrame.Name="Radar"
+radarFrame.AnchorPoint=Vector2.new(1,0)
+radarFrame.Position=UDim2.new(1,-12,0,120)
+radarFrame.Size=UDim2.fromOffset(150,150)
+radarFrame.BackgroundColor3=Color3.fromRGB(21,19,33)
+radarFrame.BackgroundTransparency=0.19
+radarFrame.BorderSizePixel=0
+radarFrame.Parent=radarGui
+local radCorner=Instance.new("UICorner",radarFrame)
+radCorner.CornerRadius=UDim.new(0,16)
+local radStroke=Instance.new("UIStroke",radarFrame)
+radStroke.Color=Color3.fromRGB(166,138,216)
+radStroke.Transparency=0.35
+local center=Instance.new("Frame")
+center.Size=UDim2.fromOffset(8,8)
+center.Position=UDim2.fromScale(0.5,0.5)
+center.AnchorPoint=Vector2.new(0.5,0.5)
+center.BackgroundColor3=Color3.fromRGB(250,244,255)
+center.BorderSizePixel=0
+center.ZIndex=4
+center.Parent=radarFrame
+local centerCorner=Instance.new("UICorner",center)
+centerCorner.CornerRadius=UDim.new(1,0)
+local radarTitle=Instance.new("TextLabel")
+radarTitle.BackgroundTransparency=1
+radarTitle.Font=Enum.Font.GothamBold
+radarTitle.TextSize=11
+radarTitle.TextColor3=Color3.fromRGB(226,205,252)
+radarTitle.Text="PRISON RADAR"
+radarTitle.Size=UDim2.new(1,0,0,19)
+radarTitle.Position=UDim2.fromOffset(0,4)
+radarTitle.ZIndex=5
+radarTitle.Parent=radarFrame
+radarFrame.Visible=false
+local RadarTab=Window:Tab({Title="Radar",Icon="radar"})
+RadarTab:Section("Team radar","Real-time relative positions on a mobile-friendly map overlay.")
+RadarTab:Toggle({Title="Show radar",Flag="pl_radar",Callback=function(v)
+    radar.on=v
+    radarFrame.Visible=v
+end})
+RadarTab:Slider({Title="Radar range",Min=100,Max=2500,Default=500,Suffix=" studs",
+    Flag="pl_radar_range",Callback=function(v)radar.range=v end})
+RadarTab:Slider({Title="Radar size",Min=100,Max=230,Default=150,Suffix=" px",
+    Flag="pl_radar_size",Callback=function(v)
+        radar.size=v
+        radarFrame.Size=UDim2.fromOffset(v,v)
+    end})
+local function updateRadarPosition(pos)
+    radar.position=pos
+    local points={
+        ["Top right"]={Vector2.new(1,0),UDim2.new(1,-12,0,120)},
+        ["Top left"]={Vector2.new(0,0),UDim2.new(0,12,0,120)},
+        ["Bottom right"]={Vector2.new(1,1),UDim2.new(1,-12,1,-110)},
+        ["Bottom left"]={Vector2.new(0,1),UDim2.new(0,12,1,-110)}
+    }
+    local selected=points[pos] or points["Top right"]
+    radarFrame.AnchorPoint=selected[1]
+    radarFrame.Position=selected[2]
+end
+RadarTab:Dropdown({Title="Overlay corner",
+    Options={"Top right","Top left","Bottom right","Bottom left"},
+    Default="Top right",Flag="pl_radar_pos",Callback=updateRadarPosition})
+local function radarDot(player)
+    local d=radar.dots[player]
+    if d then return d end
+    d=Instance.new("Frame")
+    d.Name="PlayerMarker"
+    d.Size=UDim2.fromOffset(6,6)
+    d.AnchorPoint=Vector2.new(0.5,0.5)
+    d.BackgroundColor3=getTeamColor(player)
+    d.BorderSizePixel=0
+    d.ZIndex=3
+    d.Parent=radarFrame
+    local dotRound=Instance.new("UICorner",d)
+    dotRound.CornerRadius=UDim.new(1,0)
+    radar.dots[player]=d
+    return d
+end
+local function radarClear(player)
+    if player then
+        local d=radar.dots[player]
+        if d then d:Destroy();radar.dots[player]=nil end
+    else
+        for p,d in pairs(radar.dots)do d:Destroy();radar.dots[p]=nil end
+    end
+end
+Window:Connect(Players.PlayerRemoving,radarClear)
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not alive or not radar.on then return end
+    radar.last=radar.last+dt
+    if radar.last<0.22 then return end
+    radar.last=0
+    local root=getRoot()
+    local cam=workspace.CurrentCamera
+    if not root or not cam then radarClear();return end
+    local right=cam.CFrame.RightVector
+    local front=cam.CFrame.LookVector
+    local maxPixels=(radar.size*0.5)-12
+    for _,p in ipairs(Players:GetPlayers())do
+        if p~=LocalPlayer then
+            local c=p.Character
+            local h=c and c:FindFirstChildOfClass("Humanoid")
+            local r=c and c:FindFirstChild("HumanoidRootPart")
+            local diff=r and r.Position-root.Position
+            if not h or h.Health<=0 or not diff or diff.Magnitude>radar.range then
+                radarClear(p)
+            else
+                local flat=Vector3.new(diff.X,0,diff.Z)
+                local x=math.clamp(flat:Dot(right)/radar.range,-1,1)
+                local y=math.clamp(flat:Dot(front)/radar.range,-1,1)
+                local dot=radarDot(p)
+                dot.Position=UDim2.new(0.5,x*maxPixels,0.5,-y*maxPixels)
+                dot.BackgroundColor3=getTeamColor(p)
+            end
+        end
+    end
+end)
+local radarBaseCleanup=cleanup
+cleanup=function()
+    radarClear()
+    radarGui:Destroy()
+    radarBaseCleanup()
+end
+
 local Visuals = Window:Tab({Title="Visuals", Icon="eye"})
 Visuals:Section("Client lighting", "Only your local display is affected.")
 Visuals:Toggle({Title="Fullbright", Flag="prison_fullbright", Callback=function(enabled)
@@ -899,5 +1033,5 @@ local Settings=Window:SettingsTab()
 Settings:Button({Title="Restore lighting", Icon="rotate-ccw", Callback=function()
     for key,value in pairs(original) do Lighting[key]=value end
 end})
-Window:Notify({Title="Lyra Prison Life v1.0", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.1", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
