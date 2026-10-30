@@ -1552,20 +1552,39 @@ local function radarDot(player)
     local dotRound=Instance.new("UICorner",marker)
     dotRound.CornerRadius=UDim.new(1,0)
     local markStroke=Instance.new("UIStroke",marker)
-    markStroke.Color=Color3.fromRGB(250,240,255)
-    markStroke.Thickness=1.7
-    markStroke.Transparency=1
+    markStroke.Color=getTeamColor(player)
+    markStroke.Thickness=1.8
+    markStroke.Transparency=0.22
+    -- The URL stays static per player; there is no image fetching in the update loop.
+    -- Colored dot is still visible if Roblox thumbnail images are unavailable.
+    local photo=Instance.new("ImageLabel")
+    photo.Name="Headshot"
+    photo.BackgroundTransparency=1
+    photo.BorderSizePixel=0
+    photo.Image="rbxthumb://type=AvatarHeadShot&id="..player.UserId.."&w=150&h=150"
+    photo.ScaleType=Enum.ScaleType.Crop
+    photo.AnchorPoint=Vector2.new(0.5,0.5)
+    photo.Position=UDim2.fromScale(0.5,0.5)
+    photo.Size=UDim2.new(1,-3,1,-3)
+    photo.Visible=radar.showAvatars
+    photo.ZIndex=5
+    photo.Parent=marker
+    local imageCorner=Instance.new("UICorner",photo)
+    imageCorner.CornerRadius=UDim.new(1,0)
     local label=Instance.new("TextLabel")
     label.Name="RadarName"
-    label.Position=UDim2.fromOffset(7,-6)
-    label.Size=UDim2.fromOffset(85,17)
-    label.TextXAlignment=Enum.TextXAlignment.Left
+    label.AnchorPoint=Vector2.new(0.5,0)
+    label.Position=UDim2.new(0.5,0,1,3)
+    label.Size=UDim2.fromOffset(116,39)
+    label.TextXAlignment=Enum.TextXAlignment.Center
+    label.TextYAlignment=Enum.TextYAlignment.Top
     label.BackgroundTransparency=1
     label.Font=Enum.Font.GothamBold
-    label.TextSize=9
-    label.TextStrokeTransparency=0.2
+    label.TextSize=10
+    label.TextStrokeTransparency=0.18
+    label.TextWrapped=true
     label.Visible=false
-    label.ZIndex=5
+    label.ZIndex=6
     label.Parent=marker
     radar.dots[player]=marker
     return marker
