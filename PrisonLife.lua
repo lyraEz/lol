@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.1.0
+-- Lyra Prison Life hub v1.2.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.1.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.2.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -1033,5 +1033,51 @@ local Settings=Window:SettingsTab()
 Settings:Button({Title="Restore lighting", Icon="rotate-ccw", Callback=function()
     for key,value in pairs(original) do Lighting[key]=value end
 end})
-Window:Notify({Title="Lyra Prison Life v1.1", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+
+-- Quick chat commands for phone users and keyboard players.
+Window:Command("pltp",function(text)
+    local q=tostring(text or ""):lower():gsub("^%s+",""):gsub("%s+$","")
+    local aliases={yard="Yard",cells="Cells",cafe="Cafeteria",armory="Armory",
+        police="Guard Room",criminal="Criminal Base",outside="Outside"}
+    local label=aliases[q]
+    if not label then
+        for _,place in ipairs(places)do
+            if place.Name:lower()==q then label=place.Name;break end
+        end
+    end
+    if not label then Window:Status("Unknown destination: "..q,"warning");return end
+    for _,place in ipairs(places)do
+        if place.Name==label then teleport(place.Point);break end
+    end
+end)
+Window:Command("plesp",function()
+    Window:SetFlag("prison_team_esp",not espEnabled)
+end)
+Window:Command("plfly",function()
+    Window:SetFlag("pl_fly",not fly.on)
+end)
+Window:Command("plgear",function()
+    requestItem("M9")
+    task.delay(0.35,function()if alive then requestItem("Remington 870")end end)
+    task.delay(0.75,function()if alive then requestItem("AK-47")end end)
+end)
+Window:Command("plhelp",function()
+    Window:Notify({Title="Prison commands",
+        Text="/e pltp yard | /e plesp | /e plfly | /e plgear | /e prison",
+        Kind="info",Duration=9})
+end)
+Home:Guide({Title="Commands",Lines={
+    "/e prison - reopen the hub on any screen.",
+    "/e pltp yard / cells / armory / criminal / outside - locations.",
+    "/e plesp - toggle team highlights; /e plfly - toggle flight.",
+    "/e plgear - request basic weapons; /e plhelp - command list.",
+    "Some features depend on server checks or executor support."
+}})
+Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
+    fly.on=false
+    clearFly()
+    Window:SetFlag("pl_fly",false)
+end})
+
+Window:Notify({Title="Lyra Prison Life v1.2", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
