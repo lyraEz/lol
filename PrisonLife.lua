@@ -392,7 +392,12 @@ CombatTab:Toggle({Title="Enable silent aim",Flag="pl_combat_silent",Callback=fun
     local ok,why=startSilentHook()
     if not ok then
         silent.enabled=false
-        Window:Notify({Title="Silent aim unavailable",Text=tostring(why),Kind="warning",Duration=8})
+        if not silent.lastWarning or os.clock()-silent.lastWarning>15 then
+            silent.lastWarning=os.clock()
+            Window:Notify({Title="Silent aim unavailable",Text=tostring(why),Kind="warning",Duration=6})
+        else
+            Window:Status("Silent aim unavailable: "..tostring(why),"warning")
+        end
         task.defer(function()if alive then Window:SetFlag("pl_combat_silent",false)end end)
     else Window:Status("Silent aim enabled; equip a supported firearm.","success")end
 end})
