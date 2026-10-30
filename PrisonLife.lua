@@ -242,6 +242,33 @@ local line=Instance.new("UIStroke",fovCircle)
 line.Color=Color3.fromRGB(191,164,250)
 line.Transparency=0.12
 line.Thickness=1.5
+local mobileAimButton
+if UIS.TouchEnabled then
+    mobileAimButton=Instance.new("TextButton")
+    mobileAimButton.Name="MobileAimLock"
+    mobileAimButton.Size=UDim2.fromOffset(104,46)
+    mobileAimButton.Position=UDim2.new(1,-120,0.53,0)
+    mobileAimButton.BackgroundColor3=Color3.fromRGB(38,29,59)
+    mobileAimButton.BackgroundTransparency=0.08
+    mobileAimButton.TextColor3=Color3.fromRGB(241,224,255)
+    mobileAimButton.Font=Enum.Font.GothamBold
+    mobileAimButton.TextSize=12
+    mobileAimButton.Text="AIM: OFF"
+    mobileAimButton.BorderSizePixel=0
+    mobileAimButton.Visible=false
+    mobileAimButton.Parent=combatGui
+    local buttonCorner=Instance.new("UICorner",mobileAimButton)
+    buttonCorner.CornerRadius=UDim.new(0,13)
+    local buttonStroke=Instance.new("UIStroke",mobileAimButton)
+    buttonStroke.Color=Color3.fromRGB(184,151,240)
+    buttonStroke.Thickness=1.2
+    Window:Connect(mobileAimButton.Activated,function()
+        combat.held=not combat.held
+        mobileAimButton.Text=combat.held and "AIM: ON" or "AIM: OFF"
+        mobileAimButton.BackgroundColor3=combat.held
+            and Color3.fromRGB(104,73,153) or Color3.fromRGB(38,29,59)
+    end)
+end
 local function role(p)
     local text=(p.Team and p.Team.Name or p.TeamColor.Name):lower()
     if text:find("guard") or text:find("blue") then return "guards" end
@@ -607,6 +634,9 @@ Window:Connect(RunService.RenderStepped,function(dt)
     if not alive then return end
     local cameraNow=workspace.CurrentCamera
     if not cameraNow then return end
+    if mobileAimButton then
+        mobileAimButton.Visible=combat.aim and combat.hold and not Window.Visible
+    end
     fovCircle.Visible=combat.showCircle and (combat.aim or combat.trigger or silent.enabled) and not Window.Visible
     if fovCircle.Visible then
         local point=pointer()
