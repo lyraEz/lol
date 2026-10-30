@@ -145,6 +145,7 @@ Window:Connect(Players.PlayerRemoving,function()task.defer(refresh)end)
 local espEnabled=false
 local espTeamOnly=false
 local espRange=800
+local espRefresh=0.25
 local espItems={}
 local espOptions={
     highlight=true,outline=true,fill=true,name=true,username=false,
@@ -768,6 +769,8 @@ end})
 TeamESP:Toggle({Title="Ignore teammates",Flag="prison_team_ignore",Callback=function(v)espTeamOnly=v end})
 TeamESP:Slider({Title="Maximum distance",Min=100,Max=2000,Default=800,Suffix=" studs",
     Flag="prison_team_distance",Callback=function(v)espRange=v end})
+TeamESP:Slider({Title="ESP refresh",Min=2,Max=12,Default=4,Suffix=" fps",
+    Flag="pl_esp_refresh",Callback=function(v)espRefresh=1/v end})
 TeamESP:Section("What to display", "Each option is independent. Keep only highlights or combine as many fields as you like.")
 TeamESP:Toggle({Title="Character highlights",Default=true,Flag="pl_esp_highlight",
     Callback=function(v)espOptions.highlight=v end})
@@ -836,7 +839,7 @@ local lastEsp=0
 Window:Connect(RunService.Heartbeat,function(dt)
     if not alive then return end
     lastEsp=lastEsp+dt
-    if lastEsp>=0.45 then lastEsp=0;updateEsp() end
+    if lastEsp>=espRefresh then lastEsp=0;updateEsp() end
 end)
 Window:Connect(Players.PlayerRemoving,clearItem)
 cleanup=function()
