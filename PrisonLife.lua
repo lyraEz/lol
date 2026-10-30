@@ -1,6 +1,6 @@
--- Lyra Prison Life utilities v0.2
+-- Lyra Prison Life hub v1.0.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
--- Visual-only tools; no weapon remote calls or automatic targeting.
+-- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
     warn("Lyra Prison Life: this is not Prison Life")
     return
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | utilities v0.2",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.0.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -189,6 +189,152 @@ local function updateEsp()
         end
     end
 end
+
+-- Combat tools use client camera and normally equipped tools; no remote interception.
+local UIS=game:GetService("UserInputService")
+local Camera=workspace.CurrentCamera
+local combat={
+    aim=false,hold=false,held=false,trigger=false,showCircle=true,
+    radius=180,smooth=0.24,part="Head",wall=true,team=true,
+    guards=true,inmates=true,criminals=true,triggerCooldown=0.22}
+local combatGui=Instance.new("ScreenGui")
+combatGui.Name="LyraPrisonCombat"
+combatGui.ResetOnSpawn=false
+combatGui.IgnoreGuiInset=true
+combatGui.DisplayOrder=20
+combatGui.Parent=LocalPlayer:WaitForChild("PlayerGui")
+local fovCircle=Instance.new("Frame")
+fovCircle.Name="AimRadius"
+fovCircle.AnchorPoint=Vector2.new(0.5,0.5)
+fovCircle.BackgroundTransparency=1
+fovCircle.BorderSizePixel=0
+fovCircle.Parent=combatGui
+local round=Instance.new("UICorner",fovCircle)
+round.CornerRadius=UDim.new(1,0)
+local line=Instance.new("UIStroke",fovCircle)
+line.Color=Color3.fromRGB(191,164,250)
+line.Transparency=0.12
+line.Thickness=1.5
+local function role(p)
+    local text=(p.Team and p.Team.Name or p.TeamColor.Name):lower()
+    if text:find("guard") or text:find("blue") then return "guards" end
+    if text:find("inmate") or text:find("prison") or text:find("orange") then return "inmates" end
+    if text:find("criminal") or text:find("red") then return "criminals" end
+    return "other"
+end
+local function legalTarget(p)
+    if p==LocalPlayer or (combat.team and p.Team and p.Team==LocalPlayer.Team) then return false end
+    if not combat[role(p)] then return false end
+    local model=p.Character
+    local hum=model and model:FindFirstChildOfClass("Humanoid")
+    return hum and hum.Health>0
+end
+local function pointer()
+    local cameraNow=workspace.CurrentCamera
+    if UIS.TouchEnabled and not UIS.MouseEnabled then
+        return cameraNow.ViewportSize*0.5
+    end
+    local position=UIS:GetMouseLocation()
+    return Vector2.new(position.X,position.Y)
+end
+local function visibleTarget(part,p)
+    if not combat.wall then return true end
+    local cameraNow=workspace.CurrentCamera
+    local ray=RaycastParams.new()
+    ray.FilterType=Enum.RaycastFilterType.Exclude
+    ray.FilterDescendantsInstances=LocalPlayer.Character and {LocalPlayer.Character} or {}
+    ray.IgnoreWater=true
+    local from=cameraNow.CFrame.Position
+    local trace=workspace:Raycast(from,part.Position-from,ray)
+    return not trace or (p.Character and trace.Instance:IsDescendantOf(p.Character))
+end
+local function closestTarget()
+    local cameraNow=workspace.CurrentCamera
+    if not cameraNow then return nil end
+    local pointerPos=pointer()
+    local nearest,best=nil,combat.radius
+    for _,p in ipairs(Players:GetPlayers()) do
+        if legalTarget(p) then
+            local model=p.Character
+            local part=model and (model:FindFirstChild(combat.part) or model:FindFirstChild("HumanoidRootPart"))
+            if part then
+                local projected,onScreen=cameraNow:WorldToViewportPoint(part.Position)
+                if onScreen and projected.Z>0 then
+                    local distance=(Vector2.new(projected.X,projected.Y)-pointerPos).Magnitude
+                    if distance<best and visibleTarget(part,p) then
+                        best=distance
+                        nearest=part
+                    end
+                end
+            end
+        end
+    end
+    return nearest,best
+end
+local CombatTab=Window:Tab({Title="Combat",Icon="crosshair"})
+CombatTab:Section("Aim assist", "Client-side aim assistance. Camera tracking never changes shot data.")
+CombatTab:Toggle({Title="Enable camera aim",Flag="pl_combat_aim",Callback=function(v)combat.aim=v end})
+CombatTab:Toggle({Title="Hold E / right mouse to aim",Flag="pl_combat_hold",
+    Description="Turn this off for always-on assist, including touch controls.",
+    Callback=function(v)combat.hold=v end})
+CombatTab:Toggle({Title="Trigger on crosshair",Flag="pl_combat_trigger",
+    Description="Attempts to activate an already equipped tool near a target.",
+    Callback=function(v)combat.trigger=v end})
+CombatTab:Toggle({Title="Show FOV circle",Default=true,Flag="pl_combat_circle",
+    Callback=function(v)combat.showCircle=v end})
+CombatTab:Toggle({Title="Check walls",Default=true,Flag="pl_combat_walls",
+    Callback=function(v)combat.wall=v end})
+CombatTab:Toggle({Title="Ignore teammates",Default=true,Flag="pl_combat_team",
+    Callback=function(v)combat.team=v end})
+CombatTab:Dropdown({Title="Aim body part",Options={"Head","HumanoidRootPart"},Default="Head",
+    Flag="pl_combat_part",Callback=function(v)combat.part=v end})
+CombatTab:Slider({Title="Aim radius",Min=40,Max=500,Default=180,Suffix=" px",
+    Flag="pl_combat_radius",Callback=function(v)combat.radius=v end})
+CombatTab:Slider({Title="Aim smoothing",Min=5,Max=100,Default=24,Suffix=" %",
+    Flag="pl_combat_smoothing",Callback=function(v)combat.smooth=v/100 end})
+CombatTab:Section("Team filter", "Choose which teams can be targeted.")
+CombatTab:Toggle({Title="Guards",Default=true,Flag="pl_target_guards",Callback=function(v)combat.guards=v end})
+CombatTab:Toggle({Title="Inmates",Default=true,Flag="pl_target_inmates",Callback=function(v)combat.inmates=v end})
+CombatTab:Toggle({Title="Criminals",Default=true,Flag="pl_target_criminals",Callback=function(v)combat.criminals=v end})
+local lastActivation=0
+Window:Connect(UIS.InputBegan,function(input,consumed)
+    if consumed then return end
+    if input.KeyCode==Enum.KeyCode.E or input.UserInputType==Enum.UserInputType.MouseButton2 then
+        combat.held=true
+    end
+end)
+Window:Connect(UIS.InputEnded,function(input)
+    if input.KeyCode==Enum.KeyCode.E or input.UserInputType==Enum.UserInputType.MouseButton2 then
+        combat.held=false
+    end
+end)
+Window:Connect(RunService.RenderStepped,function(dt)
+    if not alive then return end
+    local cameraNow=workspace.CurrentCamera
+    if not cameraNow then return end
+    fovCircle.Visible=combat.showCircle and (combat.aim or combat.trigger)
+    if fovCircle.Visible then
+        local point=pointer()
+        fovCircle.Size=UDim2.fromOffset(combat.radius*2,combat.radius*2)
+        fovCircle.Position=UDim2.fromOffset(point.X,point.Y)
+    end
+    if not (combat.aim or combat.trigger) or (combat.hold and not combat.held) then return end
+    local part,distance=closestTarget()
+    if not part then return end
+    if combat.aim then
+        local destination=CFrame.lookAt(cameraNow.CFrame.Position,part.Position)
+        cameraNow.CFrame=cameraNow.CFrame:Lerp(destination,math.clamp(combat.smooth*dt*60,0,0.98))
+    end
+    if combat.trigger and distance and distance<=18 and os.clock()-lastActivation>combat.triggerCooldown then
+        local char=LocalPlayer.Character
+        local tool=char and char:FindFirstChildOfClass("Tool")
+        if tool then
+            lastActivation=os.clock()
+            pcall(function()tool:Activate()end)
+        end
+    end
+end)
+
 local TeamESP=Window:Tab({Title="Team ESP", Icon="eye"})
 TeamESP:Section("Teams and players","Client-side outlines, name, team, distance and health. Blue guards, orange inmates, red criminals.")
 TeamESP:Toggle({Title="Enable team ESP",Flag="prison_team_esp",Callback=function(v)
@@ -209,6 +355,7 @@ Window:Connect(RunService.Heartbeat,function(dt)
 end)
 Window:Connect(Players.PlayerRemoving,clearItem)
 cleanup=function()
+    if combatGui then combatGui:Destroy()end
     clearEsp()
     for key,value in pairs(original) do pcall(function()Lighting[key]=value end)end
     local h=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
