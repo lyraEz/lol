@@ -111,6 +111,31 @@ PlayersTab:ButtonRow({
         if h and workspace.CurrentCamera then workspace.CurrentCamera.CameraSubject=h end
     end},
 })
+
+PlayersTab:Section("Player actions","Search by name or partial username.")
+PlayersTab:ButtonRow({
+    {Title="Teleport to player",Icon="navigation",Callback=function()
+        local p=findPlayer()
+        local r=p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+        if r then
+            local me=getRoot()
+            if me then
+                last.position=me.CFrame
+                me.CFrame=r.CFrame*CFrame.new(0,0,4)
+                Window:Status("Teleported to "..p.Name,"success")
+            end
+        else Window:Status("Selected player is not spawned","warning")end
+    end},
+    {Title="Copy UserId",Icon="copy",Callback=function()
+        local p=findPlayer()
+        if p and type(setclipboard)=="function" then
+            local ok=pcall(setclipboard,tostring(p.UserId))
+            Window:Status(ok and "UserId copied" or "Clipboard unavailable",
+                ok and "success" or "warning")
+        end
+    end}
+})
+
 Window:Connect(Players.PlayerAdded,function()task.defer(refresh)end)
 Window:Connect(Players.PlayerRemoving,function()task.defer(refresh)end)
 
@@ -444,6 +469,28 @@ Window:Connect(LocalPlayer.CharacterAdded,function()
 end)
 
 -- Team and equipment tools query the live game structure instead of creating fake items.
+
+-- Vehicle/spawn navigation uses live objects where available.
+Map:Section("Dynamic map points","Look up the current workspace instead of relying only on classic coordinates.")
+local function findPart(name)
+    local obj=workspace:FindFirstChild(name,true)
+    if not obj then return nil end
+    if obj:IsA("BasePart") then return obj end
+    return obj:FindFirstChildWhichIsA("BasePart",true)
+end
+Map:ButtonRow({
+    {Title="Guard spawn",Icon="shield",Callback=function()
+        local part=findPart("Guards Spawn") or findPart("Guard Spawn")
+        if part then teleport(part.Position+Vector3.new(0,4,0))
+        else teleport(Vector3.new(837.289,102,2270.99))end
+    end},
+    {Title="Criminal spawn",Icon="navigation",Callback=function()
+        local part=findPart("Criminals Spawn")
+        if part then teleport(part.Position+Vector3.new(0,4,0))
+        else teleport(Vector3.new(-920,100,2138))end
+    end},
+})
+
 local TeamTools=Window:Tab({Title="Teams & Gear",Icon="shield"})
 TeamTools:Section("Teams","Server decides whether a team change is accepted. Criminals must cross their spawn.")
 local remoteFolder=workspace:FindFirstChild("Remote")
@@ -534,6 +581,62 @@ Window:Connect(LocalPlayer.CharacterAdded,function()
         end)
     end
 end)
+
+TeamTools:Section("Extra actions","Nearby items and guard-only arrest helper.")
+TeamTools:Button({Title="Pick up nearby dropped item",Icon="package",
+    Description="Looks for the closest loose item within 18 studs.",
+    Callback=function()
+        local items=workspace:FindFirstChild("Prison_ITEMS")
+        local loose=items and items:FindFirstChild("single")
+        local handler=remote("ItemHandler")
+        local root=getRoot()
+        if not loose or not handler or not root then
+            Window:Status("Dropped item handler not available","warning");return
+        end
+        local bestItem,bestDist=nil,18
+        for _,obj in ipairs(loose:GetChildren()) do
+            local part=obj:FindFirstChildWhichIsA("BasePart",true)
+            local pickup=obj:FindFirstChild("ITEMPICKUP",true)
+            if part and pickup then
+                local d=(part.Position-root.Position).Magnitude
+                if d<bestDist then bestDist=d;bestItem=pickup end
+            end
+        end
+        if bestItem and handler:IsA("RemoteFunction") then
+            local ok=pcall(function()handler:InvokeServer(bestItem)end)
+            Window:Status(ok and "Pickup requested" or "Pickup rejected",ok and "success" or "warning")
+        else Window:Status("No dropped items nearby","info")end
+    end})
+local lastArrest=0
+TeamTools:Button({Title="Arrest nearest (Guards)",Icon="shield",
+    Description="Attempts one arrest within 12 studs; requires guard team.",
+    Callback=function()
+        if not LocalPlayer.Team or not LocalPlayer.Team.Name:lower():find("guard") then
+            Window:Status("You must be a Guard","warning");return
+        end
+        if os.clock()-lastArrest<1.2 then return end
+        local root=getRoot()
+        local arrest=remote("arrest")
+        if not root or not arrest or not arrest:IsA("RemoteFunction") then
+            Window:Status("Arrest handler unavailable","warning");return
+        end
+        local target,best=nil,12
+        for _,p in ipairs(Players:GetPlayers())do
+            local model=p.Character
+            local hum=model and model:FindFirstChildOfClass("Humanoid")
+            local r=model and model:FindFirstChild("HumanoidRootPart")
+            if p~=LocalPlayer and p.Team~=LocalPlayer.Team and r and hum and hum.Health>0 then
+                local d=(r.Position-root.Position).Magnitude
+                if d<best then best=d;target=model:FindFirstChild("Head") or r end
+            end
+        end
+        if target then
+            lastArrest=os.clock()
+            local ok=pcall(function()arrest:InvokeServer(target)end)
+            Window:Status(ok and "Arrest attempt sent" or "Arrest rejected",ok and "info" or "warning")
+        else Window:Status("No nearby player to arrest","info")end
+    end})
+
 local GearStatus=TeamTools:Label("Inventory: scanning...")
 TeamTools:Button({Title="Refresh inventory",Icon="refresh-cw",Callback=function()
     local backpack=LocalPlayer:FindFirstChild("Backpack")
@@ -548,6 +651,13 @@ TeamTools:Button({Title="Refresh inventory",Icon="refresh-cw",Callback=function(
     GearStatus:Set("Inventory ("..#total.."): "..(#total>0 and table.concat(total,", ") or "empty"))
 end})
 
+
+-- Extend shutdown to include temporary graphics changes.
+local restoreGraphicsOnShutdown=function()
+    if lowGraphics then setLowGraphics(false)end
+    if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView=initialFov end
+end
+
 local baseCleanup=cleanup
 cleanup=function()
     restoreCollision()
@@ -557,6 +667,7 @@ cleanup=function()
         if movement.speed then hum.WalkSpeed=16 end
         if movement.jump then hum.UseJumpPower=true;hum.JumpPower=50 end
     end
+    restoreGraphicsOnShutdown()
     baseCleanup()
 end
 
@@ -619,9 +730,56 @@ Window:Connect(RunService.Heartbeat,function(dt)
         .." | Players: "..#Players:GetPlayers().." | Place: "..game.PlaceId)
 end)
 
+
+-- Session and on-screen performance controls.
+local TeleportService=game:GetService("TeleportService")
+local misc=Window:Tab({Title="Session",Icon="settings-2"})
+misc:Section("Session controls","Useful after respawning or switching servers.")
+misc:ButtonRow({
+    {Title="Rejoin",Icon="refresh-cw",Callback=function()
+        local ok,err=pcall(function()TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LocalPlayer)end)
+        if not ok then Window:Status(tostring(err),"warning")end
+    end},
+    {Title="Respawn",Icon="rotate-ccw",Callback=function()
+        local char=LocalPlayer.Character
+        local hum=char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health=0 end
+    end}
+})
+local initialFov=workspace.CurrentCamera and workspace.CurrentCamera.FieldOfView or 70
+local lowGraphics=false
+local graphicsCache=setmetatable({}, {__mode="k"})
+local function setLowGraphics(enabled)
+    lowGraphics=enabled
+    if enabled then
+        for _,obj in ipairs(workspace:GetDescendants())do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                if graphicsCache[obj]==nil then graphicsCache[obj]=obj.Enabled end
+                obj.Enabled=false
+            end
+        end
+    else
+        for obj,value in pairs(graphicsCache)do
+            if obj and obj.Parent then pcall(function()obj.Enabled=value end)end
+        end
+        table.clear(graphicsCache)
+    end
+end
+misc:Toggle({Title="Reduce particles/trails",Flag="pl_lowfx",Callback=setLowGraphics})
+misc:Button({Title="Restore visuals",Icon="rotate-ccw",Callback=function()
+    setLowGraphics(false)
+    for k,v in pairs(original)do Lighting[k]=v end
+    if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView=initialFov end
+    Window:Status("Visual settings restored","success")
+end})
+misc:Button({Title="Unload hub",Icon="power",Callback=function()
+    Window:Confirm({Title="Unload Prison Life hub?",Text="Stop scripts and remove highlights/UI.",
+        Confirm="Unload",Callback=function()Window:Destroy()end})
+end})
+
 local Settings=Window:SettingsTab()
 Settings:Button({Title="Restore lighting", Icon="rotate-ccw", Callback=function()
     for key,value in pairs(original) do Lighting[key]=value end
 end})
-Window:Notify({Title="Lyra Prison Life", Text="Utilities loaded. Use /e prison to reopen.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.0", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
