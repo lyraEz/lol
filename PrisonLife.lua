@@ -222,7 +222,8 @@ local combat={
     aim=false,hold=false,held=false,trigger=false,showCircle=true,
     radius=180,smooth=0.24,part="Head",wall=true,team=true,
     guards=true,inmates=true,criminals=true,triggerCooldown=0.22,
-    maxDistance=800,selectedPlayer="",focusOnly=false,priority="Crosshair"}
+    maxDistance=800,selectedPlayer="",focusOnly=false,priority="Crosshair",
+    sticky=false,lockedPlayer="",prediction=0}
 local combatGui=Instance.new("ScreenGui")
 combatGui.Name="LyraPrisonCombat"
 combatGui.ResetOnSpawn=false
@@ -279,7 +280,7 @@ local function closestTarget(maxDistance, radius, ignoreFov, checkWalls, bodyPar
     local cameraNow=workspace.CurrentCamera
     if not cameraNow then return nil end
     local pointerPos=pointer()
-    local nearest,best=nil,radius or combat.radius
+    local nearest,best,bestPlayer=nil,radius or combat.radius,nil
     local ownRoot=getRoot()
     local bestScore=nil
     for _,p in ipairs(Players:GetPlayers()) do
@@ -298,9 +299,11 @@ local function closestTarget(maxDistance, radius, ignoreFov, checkWalls, bodyPar
                         elseif combat.priority=="Farthest" then score=-worldDistance
                         elseif combat.priority=="Lowest HP" then score=humanoid and humanoid.Health or math.huge
                         elseif combat.priority=="Highest HP" then score=-(humanoid and humanoid.Health or 0) end
+                        if combat.sticky and p.Name==combat.lockedPlayer then score=score-1000000 end
                         if bestScore==nil or score<bestScore then
                             bestScore=score
                             best=distance
+                            bestPlayer=p
                             nearest=part
                         end
                     end
@@ -308,6 +311,7 @@ local function closestTarget(maxDistance, radius, ignoreFov, checkWalls, bodyPar
             end
         end
     end
+    combat.lockedPlayer=(combat.sticky and bestPlayer and bestPlayer.Name) or ""
     return nearest,best
 end
 
@@ -529,6 +533,15 @@ CombatTab:Slider({Title="Aim radius",Min=40,Max=500,Default=180,Suffix=" px",
 CombatTab:Slider({Title="Aim smoothing",Min=5,Max=100,Default=24,Suffix=" %",
     Flag="pl_combat_smoothing",Callback=function(v)combat.smooth=v/100 end})
 CombatTab:Section("Target selection", "Separate maximum ranges for aim and silent aim; shared priority and player focus.")
+CombatTab:Toggle({Title="Sticky target",Flag="pl_target_sticky",
+    Description="Prefer the same valid player until they leave range or are eliminated.",
+    Callback=function(v)
+        combat.sticky=v
+        if not v then combat.lockedPlayer="" end
+    end})
+CombatTab:Slider({Title="Camera aim prediction",Min=0,Max=25,Default=0,Suffix=" / 100 s",
+    Flag="pl_aim_prediction",Callback=function(v)combat.prediction=v/100 end})
+
 CombatTab:Slider({Title="Aimbot max distance",Min=50,Max=2500,Default=800,Suffix=" studs",
     Flag="pl_aim_world_range",Callback=function(v)combat.maxDistance=v end})
 CombatTab:Slider({Title="Silent max distance",Min=50,Max=2500,Default=800,Suffix=" studs",
@@ -576,6 +589,9 @@ CombatTab:Toggle({Title="Guards",Default=true,Flag="pl_target_guards",Callback=f
 CombatTab:Toggle({Title="Inmates",Default=true,Flag="pl_target_inmates",Callback=function(v)combat.inmates=v end})
 CombatTab:Toggle({Title="Criminals",Default=true,Flag="pl_target_criminals",Callback=function(v)combat.criminals=v end})
 local lastActivation=0
+local aimPartCache=nil
+local aimDistCache=nil
+local aimScanElapsed=0
 Window:Connect(UIS.InputBegan,function(input,consumed)
     if consumed then return end
     if input.KeyCode==Enum.KeyCode.E or input.UserInputType==Enum.UserInputType.MouseButton2 then
@@ -599,10 +615,16 @@ Window:Connect(RunService.RenderStepped,function(dt)
         fovCircle.Position=UDim2.fromOffset(point.X,point.Y)
     end
     if not (combat.aim or combat.trigger) or (combat.hold and not combat.held) then return end
-    local part,distance=closestTarget()
-    if not part then return end
+    aimScanElapsed=aimScanElapsed+dt
+    if aimScanElapsed>=0.07 or (aimPartCache and not aimPartCache.Parent) then
+        aimScanElapsed=0
+        aimPartCache,aimDistCache=closestTarget()
+    end
+    local part,distance=aimPartCache,aimDistCache
+    if not part or not part.Parent then return end
     if combat.aim then
-        local destination=CFrame.lookAt(cameraNow.CFrame.Position,part.Position)
+        local predicted=part.Position+part.AssemblyLinearVelocity*combat.prediction
+        local destination=CFrame.lookAt(cameraNow.CFrame.Position,predicted)
         cameraNow.CFrame=cameraNow.CFrame:Lerp(destination,math.clamp(combat.smooth*dt*60,0,0.98))
     end
     if combat.trigger and distance and distance<=18 and os.clock()-lastActivation>combat.triggerCooldown then
