@@ -251,6 +251,7 @@ end
 local function legalTarget(p)
     if p==LocalPlayer or (combat.team and p.Team and p.Team==LocalPlayer.Team) then return false end
     if not combat[role(p)] then return false end
+    if combat.focusOnly and (combat.selectedPlayer=="" or p.Name~=combat.selectedPlayer) then return false end
     local model=p.Character
     local hum=model and model:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health>0
@@ -279,17 +280,29 @@ local function closestTarget()
     if not cameraNow then return nil end
     local pointerPos=pointer()
     local nearest,best=nil,combat.radius
+    local ownRoot=getRoot()
+    local bestScore=nil
     for _,p in ipairs(Players:GetPlayers()) do
         if legalTarget(p) then
             local model=p.Character
             local part=model and (model:FindFirstChild(combat.part) or model:FindFirstChild("HumanoidRootPart"))
-            if part then
+            if part and ownRoot and (part.Position-ownRoot.Position).Magnitude<=combat.maxDistance then
+                local worldDistance=(part.Position-ownRoot.Position).Magnitude
                 local projected,onScreen=cameraNow:WorldToViewportPoint(part.Position)
                 if onScreen and projected.Z>0 then
                     local distance=(Vector2.new(projected.X,projected.Y)-pointerPos).Magnitude
-                    if distance<best and visibleTarget(part,p) then
-                        best=distance
-                        nearest=part
+                    if distance<=combat.radius and visibleTarget(part,p) then
+                        local humanoid=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+                        local score=distance
+                        if combat.priority=="Nearest" then score=worldDistance
+                        elseif combat.priority=="Farthest" then score=-worldDistance
+                        elseif combat.priority=="Lowest HP" then score=humanoid and humanoid.Health or math.huge
+                        elseif combat.priority=="Highest HP" then score=-(humanoid and humanoid.Health or 0) end
+                        if bestScore==nil or score<bestScore then
+                            bestScore=score
+                            best=distance
+                            nearest=part
+                        end
                     end
                 end
             end
