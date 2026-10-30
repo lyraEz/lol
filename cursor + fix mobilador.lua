@@ -484,11 +484,32 @@ local function handleChatCommand(text)
     end
 end
 
+-- Chat legado e mensagens regulares do chat novo.
 connect(LocalPlayer.Chatted, handleChatCommand)
 pcall(function()
     connect(TextChatService.SendingMessage, function(message)
         handleChatCommand(message.Text)
     end)
+end)
+
+-- No TextChatService, /e é consumido pelo RBXEmoteCommand e NÃO aparece
+-- em SendingMessage. Escutamos o Triggered existente, sem alterar os emotes.
+local emoteHooks = {}
+local function hookEmoteCommand(instance)
+    if not session.alive or instance.Name ~= "RBXEmoteCommand"
+        or not instance:IsA("TextChatCommand") or emoteHooks[instance] then return end
+    emoteHooks[instance] = true
+    connect(instance.Triggered, function(textSource, fullText)
+        if not session.alive then return end
+        if textSource and textSource.UserId ~= LocalPlayer.UserId then return end
+        handleChatCommand(fullText)
+    end)
+end
+pcall(function()
+    for _, child in ipairs(TextChatService:GetDescendants()) do
+        hookEmoteCommand(child)
+    end
+    connect(TextChatService.DescendantAdded, hookEmoteCommand)
 end)
 
 local oldStop = session.stop
