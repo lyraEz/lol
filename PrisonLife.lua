@@ -426,6 +426,70 @@ Mov:Button({Title="Reset movement",Icon="rotate-ccw",Callback=function()
     if hum then hum.WalkSpeed=16;hum.UseJumpPower=true;hum.JumpPower=50;hum.Sit=false end
     Window:Status("Movement restored", "success")
 end})
+
+-- Flight follows Humanoid.MoveDirection, so the virtual mobile joystick also works.
+local fly={on=false,speed=60,up=false,down=false,root=nil,velocity=nil,gyro=nil}
+local function clearFly()
+    if fly.velocity then fly.velocity:Destroy();fly.velocity=nil end
+    if fly.gyro then fly.gyro:Destroy();fly.gyro=nil end
+    fly.root=nil
+end
+local function prepareFly(root)
+    if fly.root==root and fly.velocity and fly.gyro then return end
+    clearFly()
+    fly.root=root
+    local vel=Instance.new("BodyVelocity")
+    vel.Name="LyraFlyVelocity"
+    vel.MaxForce=Vector3.new(1e7,1e7,1e7)
+    vel.P=2000
+    vel.Velocity=Vector3.zero
+    vel.Parent=root
+    fly.velocity=vel
+    local gyro=Instance.new("BodyGyro")
+    gyro.Name="LyraFlyGyro"
+    gyro.P=8000
+    gyro.D=600
+    gyro.MaxTorque=Vector3.new(1e6,1e6,1e6)
+    gyro.CFrame=root.CFrame
+    gyro.Parent=root
+    fly.gyro=gyro
+end
+Mov:Section("Fly", "Camera-relative flight with mobile joystick support.")
+Mov:Toggle({Title="Fly",Flag="pl_fly",Callback=function(v)
+    fly.on=v
+    if not v then clearFly() end
+end})
+Mov:Slider({Title="Fly speed",Min=15,Max=160,Default=60,Suffix=" studs/s",
+    Flag="pl_fly_speed",Callback=function(v)fly.speed=v end})
+Mov:Toggle({Title="Fly ascend",Flag="pl_fly_up",Callback=function(v)fly.up=v end})
+Mov:Toggle({Title="Fly descend",Flag="pl_fly_down",Callback=function(v)fly.down=v end})
+Window:Connect(UIS.InputBegan,function(input,processed)
+    if processed then return end
+    if input.KeyCode==Enum.KeyCode.Space then fly.up=true end
+    if input.KeyCode==Enum.KeyCode.LeftControl then fly.down=true end
+end)
+Window:Connect(UIS.InputEnded,function(input)
+    if input.KeyCode==Enum.KeyCode.Space then fly.up=false end
+    if input.KeyCode==Enum.KeyCode.LeftControl then fly.down=false end
+end)
+Window:Connect(RunService.Heartbeat,function()
+    if not alive or not fly.on then return end
+    local model=LocalPlayer.Character
+    local hum=model and model:FindFirstChildOfClass("Humanoid")
+    local root=model and model:FindFirstChild("HumanoidRootPart")
+    if not hum or not root or hum.Health<=0 then clearFly();return end
+    prepareFly(root)
+    local cam=workspace.CurrentCamera
+    local dir=hum.MoveDirection
+    local rise=(fly.up and 1 or 0)-(fly.down and 1 or 0)
+    fly.velocity.Velocity=dir*fly.speed+Vector3.new(0,rise*fly.speed,0)
+    if cam then
+        local look=Vector3.new(cam.CFrame.LookVector.X,0,cam.CFrame.LookVector.Z)
+        if look.Magnitude>0.05 then fly.gyro.CFrame=CFrame.lookAt(root.Position,root.Position+look)end
+    end
+    hum.PlatformStand=false
+end)
+
 local lastSafe,moveClock= nil,0
 Window:Connect(UIS.JumpRequest,function()
     if movement.infiniteJump then
@@ -637,6 +701,56 @@ TeamTools:Button({Title="Arrest nearest (Guards)",Icon="shield",
         else Window:Status("No nearby player to arrest","info")end
     end})
 
+
+-- Local weapon config editor: does not spoof server ownership or bypass gun remotes.
+local customGun=false
+local originalGunStates=setmetatable({}, {__mode="k"})
+local function tuneGun(tool)
+    local module=tool:FindFirstChild("GunStates",true)
+    if not module or not module:IsA("ModuleScript") then return false end
+    local ok,config=pcall(require,module)
+    if not ok or type(config)~="table" then return false end
+    if not originalGunStates[module]then
+        local copy={}
+        for k,v in pairs(config)do copy[k]=v end
+        originalGunStates[module]=copy
+    end
+    local old=originalGunStates[module]
+    if customGun then
+        local vals={Spread=0,ReloadTime=0.12,FireRate=0.075,AutoFire=true,Range=5000}
+        for k,v in pairs(vals)do if old[k]~=nil then config[k]=v end end
+    else
+        for k,v in pairs(old)do config[k]=v end
+    end
+    return true
+end
+local function refreshGuns()
+    local count=0
+    for _,container in ipairs({LocalPlayer:FindFirstChild("Backpack") or LocalPlayer,LocalPlayer.Character or LocalPlayer})do
+        for _,obj in ipairs(container:GetChildren())do
+            if obj:IsA("Tool") and tuneGun(obj)then count=count+1 end
+        end
+    end
+    return count
+end
+TeamTools:Section("Local gun tuning","Client-side GunStates only; server restrictions and ammunition limits still apply.")
+TeamTools:Toggle({Title="Fast reload / low spread",Flag="pl_gun_tuning",Callback=function(v)
+    customGun=v
+    Window:Status("Processed "..refreshGuns().." local gun configurations", "info")
+end})
+TeamTools:Button({Title="Refresh gun tuning",Icon="refresh-cw",Callback=function()
+    Window:Status("Processed "..refreshGuns().." gun configs","info")
+end})
+local reloadGunClock=0
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not customGun or not alive then return end
+    reloadGunClock=reloadGunClock+dt
+    if reloadGunClock>=1.5 then
+        reloadGunClock=0
+        refreshGuns()
+    end
+end)
+
 local GearStatus=TeamTools:Label("Inventory: scanning...")
 TeamTools:Button({Title="Refresh inventory",Icon="refresh-cw",Callback=function()
     local backpack=LocalPlayer:FindFirstChild("Backpack")
@@ -656,6 +770,9 @@ end})
 local baseCleanup=cleanup
 cleanup=function()
     restoreCollision()
+    clearFly()
+    customGun=false
+    pcall(refreshGuns)
     local model=LocalPlayer.Character
     local hum=model and model:FindFirstChildOfClass("Humanoid")
     if hum then
