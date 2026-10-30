@@ -148,7 +148,8 @@ local espItems={}
 local espOptions={
     highlight=true,outline=true,fill=true,name=true,username=false,
     team=true,distance=true,health=true,healthBar=false,weapon=false,
-    fontSize=13,fillOpacity=82,hideThroughWalls=false,compact=true
+    fontSize=13,fillOpacity=82,hideThroughWalls=false,compact=true,
+    guards=true,inmates=true,criminals=true,neutral=true
 }
 local function clearItem(p)
     local entry=espItems[p]
@@ -217,6 +218,15 @@ local function makeEspEntry(p,model,head)
     espItems[p]=entry
     return entry
 end
+local function espTeamAllowed(p)
+    local name=p.Team and p.Team.Name:lower() or ""
+    if name:find("guard") or name:find("blue") then return espOptions.guards end
+    if name:find("criminal") or name:find("red") then return espOptions.criminals end
+    if name:find("inmate") or name:find("prison") or name:find("orange") then
+        return espOptions.inmates
+    end
+    return espOptions.neutral
+end
 local function updateEsp()
     local myRoot=getRoot()
     if not espEnabled or not myRoot then clearEsp();return end
@@ -227,7 +237,7 @@ local function updateEsp()
         local head=model and model:FindFirstChild("Head")
         local dist=root and (root.Position-myRoot.Position).Magnitude or math.huge
         if p==LocalPlayer or not hum or hum.Health<=0 or not head
-            or dist>espRange
+            or not espTeamAllowed(p) or dist>espRange
             or (espTeamOnly and p.Team and p.Team==LocalPlayer.Team) then
             clearItem(p)
         else
@@ -267,6 +277,7 @@ local function updateEsp()
                 math.floor(230*(1-fraction)+80*fraction),
                 math.floor(83*(1-fraction)+226*fraction),100)
             entry.gui.MaxDistance=espRange
+            entry.gui.AlwaysOnTop=not opt.hideThroughWalls
             entry.gui.Size=UDim2.fromOffset(240,opt.compact and 66 or 114)
             entry.gui.Enabled=entry.text.Visible or opt.healthBar
         end
@@ -777,6 +788,15 @@ TeamESP:Toggle({Title="Health bars",Flag="pl_esp_healthbar",
     Callback=function(v)espOptions.healthBar=v end})
 TeamESP:Toggle({Title="Equipped tool name",Flag="pl_esp_equipped",
     Callback=function(v)espOptions.weapon=v end})
+TeamESP:Section("Team filters", "Show or hide each team separately.")
+TeamESP:Toggle({Title="Show Guards",Default=true,Flag="pl_esp_filter_guards",
+    Callback=function(v)espOptions.guards=v end})
+TeamESP:Toggle({Title="Show Inmates",Default=true,Flag="pl_esp_filter_inmates",
+    Callback=function(v)espOptions.inmates=v end})
+TeamESP:Toggle({Title="Show Criminals",Default=true,Flag="pl_esp_filter_criminals",
+    Callback=function(v)espOptions.criminals=v end})
+TeamESP:Toggle({Title="Show neutral players",Default=true,Flag="pl_esp_filter_neutral",
+    Callback=function(v)espOptions.neutral=v end})
 TeamESP:Section("Appearance", "Control visual density, opacity and visibility.")
 TeamESP:Toggle({Title="Compact one-line labels",Default=true,Flag="pl_esp_compact",
     Callback=function(v)espOptions.compact=v end})
