@@ -452,13 +452,14 @@ local function startSilentHook()
             for key,item in pairs(value)do copy[key]=item end
             -- Current GunRemotes protocol: {originVector3, hitPositionVector3, hitPart}.
             if typeof(value[1])=="Vector3" and typeof(value[2])=="Vector3"
-                and typeof(value[3])=="Instance" then
+                and typeof(value[3])=="Instance" and value[3]:IsA("BasePart") then
                 copy[2]=hitPosition
                 copy[3]=hitPart
                 return copy,1,"vector-triple"
             end
             -- Older Prison Life remotes: {RayObject=Ray, Hit=BasePart, ...}.
-            if typeof(value.RayObject)=="Ray" or typeof(value.Hit)=="Instance" then
+            if typeof(value.RayObject)=="Ray" and typeof(value.Hit)=="Instance"
+                and value.Hit:IsA("BasePart") then
                 local oldRay=value.RayObject
                 local origin=typeof(oldRay)=="Ray" and oldRay.Origin
                     or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position)
@@ -467,8 +468,8 @@ local function startSilentHook()
                 if direction.Magnitude>0.01 then
                     copy.RayObject=Ray.new(origin,direction.Unit*math.max(direction.Magnitude,1000))
                     copy.Hit=hitPart
-                    copy.Distance=direction.Magnitude
-                    copy.Cframe=CFrame.lookAt(hitPosition,hitPosition+direction.Unit)
+                    if value.Distance~=nil then copy.Distance=direction.Magnitude end
+                    if value.Cframe~=nil then copy.Cframe=CFrame.lookAt(hitPosition,hitPosition+direction.Unit) end
                     return copy,1,"legacy-ray"
                 end
             end
@@ -603,6 +604,16 @@ CombatTab:Slider({Title="Movement prediction",Min=0,Max=30,Default=0,Suffix=" / 
         if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==3 then
             env.LyraPrisonSilentController.prediction=silent.prediction
         end
+    end})
+CombatTab:Button({Title="Emergency: restore normal shooting",Icon="refresh-cw",
+    Description="Immediately disables silent interception. Original shots pass untouched.",
+    Callback=function()
+        local env=type(getgenv)=="function" and getgenv() or _G
+        local hook=env.LyraPrisonSilentController
+        silent.enabled=false
+        if hook and type(hook.enable)=="function" then hook.enable(false)end
+        Window:SetFlag("pl_combat_silent",false)
+        Window:Notify({Title="Normal shooting",Text="Silent aim disabled; original weapon calls are unchanged.",Kind="success"})
     end})
 CombatTab:Section("Silent aim diagnostics",
     "Observed means a game shot reached the hook. Adjusted means bullet data changed, not that the server registered damage.")
