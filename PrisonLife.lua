@@ -441,6 +441,49 @@ CombatTab:Slider({Title="Aim radius",Min=40,Max=500,Default=180,Suffix=" px",
     Flag="pl_combat_radius",Callback=function(v)combat.radius=v end})
 CombatTab:Slider({Title="Aim smoothing",Min=5,Max=100,Default=24,Suffix=" %",
     Flag="pl_combat_smoothing",Callback=function(v)combat.smooth=v/100 end})
+CombatTab:Section("Target selection", "Separate maximum ranges for aim and silent aim; shared priority and player focus.")
+CombatTab:Slider({Title="Aimbot max distance",Min=50,Max=2500,Default=800,Suffix=" studs",
+    Flag="pl_aim_world_range",Callback=function(v)combat.maxDistance=v end})
+CombatTab:Slider({Title="Silent max distance",Min=50,Max=2500,Default=800,Suffix=" studs",
+    Flag="pl_silent_world_range",Callback=function(v)silent.maxDistance=v end})
+CombatTab:Slider({Title="Silent FOV radius",Min=30,Max=500,Default=180,Suffix=" px",
+    Flag="pl_silent_radius",Callback=function(v)silent.radius=v end})
+CombatTab:Dropdown({Title="Target priority",
+    Options={"Crosshair","Nearest","Farthest","Lowest HP","Highest HP"},
+    Default="Crosshair",Flag="pl_target_priority",
+    Callback=function(v)combat.priority=v end})
+local focusOptions={"Auto (all players)"}
+local playerFocus=CombatTab:Dropdown({Title="Focused player",Options=focusOptions,
+    Default=focusOptions[1],Flag="pl_target_focus",
+    Callback=function(label)
+        combat.selectedPlayer=(label=="Auto (all players)" and "" or label)
+    end})
+local function refreshFocusList()
+    local names={"Auto (all players)"}
+    for _,p in ipairs(Players:GetPlayers())do
+        if p~=LocalPlayer then table.insert(names,p.Name)end
+    end
+    table.sort(names,function(a,b)
+        if a=="Auto (all players)" then return true end
+        if b=="Auto (all players)" then return false end
+        return a:lower()<b:lower()
+    end)
+    playerFocus:SetOptions(names,true)
+    if combat.selectedPlayer~="" and not Players:FindFirstChild(combat.selectedPlayer) then
+        combat.selectedPlayer=""
+        playerFocus:Set("Auto (all players)")
+    end
+    Window:Status("Player list updated: "..(#names-1).." players","info")
+end
+CombatTab:Button({Title="Refresh player dropdown",Icon="refresh-cw",
+    Callback=refreshFocusList})
+CombatTab:Toggle({Title="Target only focused player",Flag="pl_focus_only",
+    Description="When on, Auto means no valid target until you pick a player.",
+    Callback=function(v)combat.focusOnly=v end})
+Window:Connect(Players.PlayerAdded,function()task.defer(refreshFocusList)end)
+Window:Connect(Players.PlayerRemoving,function()task.defer(refreshFocusList)end)
+refreshFocusList()
+
 CombatTab:Section("Team filter", "Choose which teams can be targeted.")
 CombatTab:Toggle({Title="Guards",Default=true,Flag="pl_target_guards",Callback=function(v)combat.guards=v end})
 CombatTab:Toggle({Title="Inmates",Default=true,Flag="pl_target_inmates",Callback=function(v)combat.inmates=v end})
