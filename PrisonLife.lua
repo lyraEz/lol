@@ -355,14 +355,6 @@ Window:Connect(RunService.Heartbeat,function(dt)
 end)
 Window:Connect(Players.PlayerRemoving,clearItem)
 cleanup=function()
-
-    restoreCollision()
-    local model=LocalPlayer.Character
-    local hum=model and model:FindFirstChildOfClass("Humanoid")
-    if hum then
-        if movement.speed then hum.WalkSpeed=16 end
-        if movement.jump then hum.UseJumpPower=true;hum.JumpPower=50 end
-    end
     if combatGui then combatGui:Destroy()end
     clearEsp()
     for key,value in pairs(original) do pcall(function()Lighting[key]=value end)end
@@ -555,6 +547,18 @@ TeamTools:Button({Title="Refresh inventory",Icon="refresh-cw",Callback=function(
     end
     GearStatus:Set("Inventory ("..#total.."): "..(#total>0 and table.concat(total,", ") or "empty"))
 end})
+
+local baseCleanup=cleanup
+cleanup=function()
+    restoreCollision()
+    local model=LocalPlayer.Character
+    local hum=model and model:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if movement.speed then hum.WalkSpeed=16 end
+        if movement.jump then hum.UseJumpPower=true;hum.JumpPower=50 end
+    end
+    baseCleanup()
+end
 
 local Visuals = Window:Tab({Title="Visuals", Icon="eye"})
 Visuals:Section("Client lighting", "Only your local display is affected.")
