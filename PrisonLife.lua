@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.2.0
+-- Lyra Prison Life hub v1.3.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.2.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.3.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -593,20 +593,61 @@ local function findItem(name)
     end
     return nil
 end
+local function inventoryHas(name)
+    local backpack=LocalPlayer:FindFirstChild("Backpack")
+    local char=LocalPlayer.Character
+    return (backpack and backpack:FindFirstChild(name)) or (char and char:FindFirstChild(name))
+end
 local function requestItem(name)
+    if inventoryHas(name) then
+        Window:Notify({Title="Already owned",Text=name.." is in your inventory.",Kind="info"})
+        return true
+    end
     local giver=findItem(name)
     local handler=remote("ItemHandler")
-    local item=giver and giver:FindFirstChild("ITEMPICKUP",true)
-    if not giver or not handler or not item then
-        Window:Notify({Title="Gear",Text=name.." cannot be requested from this server.",Kind="warning"})
-        return
+    local pickup=giver and giver:FindFirstChild("ITEMPICKUP",true)
+    if not pickup then
+        Window:Notify({Title="Item unavailable",Text=name.." has no pickup in this server.",Kind="warning"})
+        return false
     end
-    if not handler:IsA("RemoteFunction") then return end
-    local ok=pcall(function()handler:InvokeServer(item)end)
-    Window:Notify({Title="Gear",Text=ok and ("Requested "..name.."; restrictions still apply.") or
-        ("Could not request "..name),Kind=ok and "info" or "warning"})
+    if not handler or not handler:IsA("RemoteFunction") then
+        Window:Notify({Title="Pickup error",Text="Remote ItemHandler is unavailable.",Kind="error"})
+        return false
+    end
+    Window:Status("Requesting "..name.."...","loading")
+    task.spawn(function()
+        local ok,response=pcall(function()return handler:InvokeServer(pickup)end)
+        if not alive then return end
+        if not ok then
+            Window:Notify({Title="Pickup request failed",Text=tostring(response),Kind="error"})
+            return
+        end
+        local untilTime=os.clock()+2.8
+        while alive and not inventoryHas(name) and os.clock()<untilTime do task.wait(0.12)end
+        if not alive then return end
+        local delivered=inventoryHas(name)~=nil
+        Window:Notify({Title=delivered and "Weapon received" or "Weapon not received",
+            Text=delivered and (name.." added to inventory.")
+                or (name..": server did not deliver. Check your team or gamepass."),
+            Kind=delivered and "success" or "warning",Duration=7})
+    end)
+    return true
 end
 TeamTools:Section("Weapons & items","Only items present in the live map. Paid equipment still requires ownership.")
+TeamTools:Button({Title="Diagnose weapon availability",Icon="refresh-cw",Callback=function()
+    local container=workspace:FindFirstChild("Prison_ITEMS")
+    local giver=container and container:FindFirstChild("giver")
+    local handler=remote("ItemHandler")
+    local available=0
+    if giver then for _,obj in ipairs(giver:GetChildren())do
+        if obj:FindFirstChild("ITEMPICKUP",true) then available=available+1 end
+    end end
+    Window:Notify({Title="Weapon system",
+        Text="Remote: "..(handler and handler.ClassName or "missing")..
+             " | item giver: "..(giver and "present" or "missing")..
+             " | pickup points: "..available,
+        Kind=handler and giver and "info" or "warning",Duration=9})
+end})
 TeamTools:Dropdown({Title="Weapon",Options=weaponChoices,Default="M9",
     Flag="pl_item",Callback=function(v)selectedWeapon=v end})
 TeamTools:ButtonRow({
@@ -707,20 +748,23 @@ local customGun=false
 local originalGunStates=setmetatable({}, {__mode="k"})
 local function tuneGun(tool)
     local module=tool:FindFirstChild("GunStates",true)
-    if not module or not module:IsA("ModuleScript") then return false end
+    if not module or not module:IsA("ModuleScript") then return false,"GunStates missing" end
     local ok,config=pcall(require,module)
-    if not ok or type(config)~="table" then return false end
+    if not ok or type(config)~="table" then return false,"GunStates require failed" end
     if not originalGunStates[module]then
         local copy={}
         for k,v in pairs(config)do copy[k]=v end
         originalGunStates[module]=copy
     end
-    local old=originalGunStates[module]
     if customGun then
-        local vals={Spread=0,ReloadTime=0.12,FireRate=0.075,AutoFire=true,Range=5000}
-        for k,v in pairs(vals)do if old[k]~=nil then config[k]=v end end
+        local mods={Spread=0,ReloadTime=0.1,FireRate=0.065,AutoFire=true,
+            Range=5000,MaxAmmo=999,CurrentAmmo=999,StoredAmmo=999}
+        for key,newValue in pairs(mods)do
+            local oldValue=originalGunStates[module][key]
+            if oldValue~=nil and type(oldValue)==type(newValue) then config[key]=newValue end
+        end
     else
-        for k,v in pairs(old)do config[k]=v end
+        for k,v in pairs(originalGunStates[module])do config[k]=v end
     end
     return true
 end
@@ -1079,5 +1123,5 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v1.2", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.3", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
