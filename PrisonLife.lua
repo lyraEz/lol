@@ -313,13 +313,17 @@ end
 
 -- Silent aim: redirects the bullet data of legitimate ShootEvent calls only.
 -- The hook stays dormant when disabled; unsupported executors keep regular gun behavior.
-local silent={enabled=false,hitChance=95,available=false,reason="Not initialized",maxDistance=800,radius=180}
+local silent={enabled=false,hitChance=95,available=false,reason="Not initialized",
+    maxDistance=800,radius=180,prediction=0,ignoreFov=false,wall=true,part="Head"}
 local function equippedFirearm()
     local char=LocalPlayer.Character
     if not char then return nil end
     for _,tool in ipairs(char:GetChildren())do
         if tool:IsA("Tool") and (tool:FindFirstChild("GunStates",true)
-            or tool:FindFirstChild("GunInterface",true)) then return tool end
+            or tool:FindFirstChild("GunInterface",true)
+            or tool:GetAttribute("StoredAmmo")~=nil
+            or tool:GetAttribute("CurrentAmmo")~=nil
+            or tool:GetAttribute("Behavior")~=nil) then return tool end
     end
 end
 local function startSilentHook()
@@ -421,6 +425,7 @@ local function startSilentHook()
         return closestTarget(silent.maxDistance, silent.radius)
     end
     controller.chance=silent.hitChance
+    controller.prediction=silent.prediction
     controller.enable(true)
     silent.available=true
     silent.reason="ready"
