@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.3.0
+-- Lyra Prison Life hub v1.4.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.3.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.4.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -296,8 +296,113 @@ local function closestTarget()
     end
     return nearest,best
 end
+
+-- Silent aim: redirects the bullet data of legitimate ShootEvent calls only.
+-- The hook stays dormant when disabled; unsupported executors keep regular gun behavior.
+local silent={enabled=false,hitChance=95,available=false,reason="Not initialized"}
+local function equippedFirearm()
+    local char=LocalPlayer.Character
+    if not char then return nil end
+    for _,tool in ipairs(char:GetChildren())do
+        if tool:IsA("Tool") and (tool:FindFirstChild("GunStates",true)
+            or tool:FindFirstChild("GunInterface",true)) then return tool end
+    end
+end
+local function startSilentHook()
+    local remoteEvent=game:GetService("ReplicatedStorage"):FindFirstChild("ShootEvent")
+    if not remoteEvent or not remoteEvent:IsA("RemoteEvent") then
+        return false,"ShootEvent remote is missing"
+    end
+    if type(hookmetamethod)~="function" or type(getnamecallmethod)~="function" then
+        return false,"Executor doesn't support namecall hooks"
+    end
+    local global=type(getgenv)=="function" and getgenv() or _G
+    local controller=global.LyraPrisonSilentController
+    if type(controller)~="table" or type(controller.enable)~="function" then
+        controller={enabled=false, target=nil, chance=95, remote=remoteEvent}
+        local oldNamecall
+        local function interception(self,...)
+            if self==controller.remote and controller.enabled
+                and getnamecallmethod()=="FireServer"
+                and (type(checkcaller)~="function" or not checkcaller()) then
+                local args=table.pack(...)
+                local bullets=args[1]
+                if type(bullets)=="table" and #bullets>0 and math.random(100)<=controller.chance then
+                    local part=type(controller.target)=="function" and controller.target() or nil
+                    if part and part.Parent then
+                        local modified={}
+                        for key,bullet in pairs(bullets)do
+                            if type(bullet)=="table" then
+                                local shot={}
+                                for k,v in pairs(bullet)do shot[k]=v end
+                                local ray=shot.RayObject
+                                local cam=workspace.CurrentCamera
+                                local origin=typeof(ray)=="Ray" and ray.Origin
+                                    or (cam and cam.CFrame.Position) or part.Position
+                                local delta=part.Position-origin
+                                if delta.Magnitude>0.01 then
+                                    shot.RayObject=Ray.new(origin,delta.Unit*math.max(delta.Magnitude,1000))
+                                    shot.Hit=part
+                                    shot.Distance=delta.Magnitude
+                                    shot.Cframe=CFrame.lookAt(part.Position,part.Position+delta.Unit)
+                                end
+                                modified[key]=shot
+                            else modified[key]=bullet end
+                        end
+                        args[1]=modified
+                        return oldNamecall(self,table.unpack(args,1,args.n))
+                    end
+                end
+            end
+            return oldNamecall(self,...)
+        end
+        local wrapped=type(newcclosure)=="function" and newcclosure(interception) or interception
+        local ok,prior=pcall(function()return hookmetamethod(game,"__namecall",wrapped)end)
+        if not ok or type(prior)~="function" then
+            return false,ok and "Hook did not return a valid original function" or tostring(prior)
+        end
+        oldNamecall=prior
+        controller.enable=function(value) controller.enabled=value end
+        global.LyraPrisonSilentController=controller
+    end
+    controller.remote=remoteEvent
+    controller.target=function()
+        if not alive or not silent.enabled or not equippedFirearm() then return nil end
+        return closestTarget()
+    end
+    controller.chance=silent.hitChance
+    controller.enable(true)
+    silent.available=true
+    silent.reason="ready"
+    return true,"ready"
+end
+
 local CombatTab=Window:Tab({Title="Combat",Icon="crosshair"})
 CombatTab:Section("Aim assist", "Client-side aim assistance. Camera tracking never changes shot data.")
+CombatTab:Section("Silent aim", "PC and mobile: follows weapon ShootEvent rather than mouse clicks. Requires executor hook support.")
+CombatTab:Toggle({Title="Enable silent aim",Flag="pl_combat_silent",Callback=function(value)
+    if not value then
+        silent.enabled=false
+        local g=type(getgenv)=="function" and getgenv() or _G
+        if g.LyraPrisonSilentController then g.LyraPrisonSilentController.enable(false) end
+        Window:Status("Silent aim disabled","info")
+        return
+    end
+    silent.enabled=true
+    local ok,why=startSilentHook()
+    if not ok then
+        silent.enabled=false
+        Window:Notify({Title="Silent aim unavailable",Text=tostring(why),Kind="warning",Duration=8})
+        task.defer(function()if alive then Window:SetFlag("pl_combat_silent",false)end end)
+    else Window:Status("Silent aim enabled; equip a supported firearm.","success")end
+end})
+CombatTab:Slider({Title="Silent hit chance",Min=1,Max=100,Default=95,Suffix="%",
+    Flag="pl_combat_hitchance",Callback=function(value)
+        silent.hitChance=value
+        local g=type(getgenv)=="function" and getgenv() or _G
+        if g.LyraPrisonSilentController then g.LyraPrisonSilentController.chance=value end
+    end})
+
 CombatTab:Toggle({Title="Enable camera aim",Flag="pl_combat_aim",Callback=function(v)combat.aim=v end})
 CombatTab:Toggle({Title="Hold E / right mouse to aim",Flag="pl_combat_hold",
     Description="Turn this off for always-on assist, including touch controls.",
@@ -380,6 +485,11 @@ Window:Connect(RunService.Heartbeat,function(dt)
 end)
 Window:Connect(Players.PlayerRemoving,clearItem)
 cleanup=function()
+    silent.enabled=false
+    local shared=type(getgenv)=="function" and getgenv() or _G
+    if shared.LyraPrisonSilentController then
+        pcall(function()shared.LyraPrisonSilentController.enable(false)end)
+    end
     if combatGui then combatGui:Destroy()end
     clearEsp()
     for key,value in pairs(original) do pcall(function()Lighting[key]=value end)end
@@ -1123,5 +1233,5 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v1.3", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.4", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
