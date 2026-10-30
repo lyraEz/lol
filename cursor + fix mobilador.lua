@@ -29,10 +29,12 @@ local function connect(signal, handler)
 end
 
 local GUI_NAME = "MOBHUB_CursorFixMobilador"
-local CURSOR_IMAGE = "rbxassetid://2128690040"
+local DEFAULT_CURSOR_ID = "11716559277"
+local CURSOR_IMAGE_PREFIX = "rbxassetid://"
 local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
 
 local cursorSize = DEFAULT_SIZE
+local cursorAssetId = DEFAULT_CURSOR_ID
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
 -- PC: segurar RMB para girar. CENTRO: clique RMB alterna trava/destrava.
@@ -43,6 +45,7 @@ local lockMode = "PC"
 local function configSnapshot()
     return {
         cursorSize = cursorSize,
+        cursorAssetId = cursorAssetId,
         offsetX = offsetX,
         offsetY = offsetY,
         cursorEnabled = cursorEnabled,
@@ -75,6 +78,11 @@ local function loadConfig()
     end
     if type(data) == "table" then
         cursorSize = math.clamp(tonumber(data.cursorSize) or DEFAULT_SIZE, MIN_SIZE, MAX_SIZE)
+        if type(data.cursorAssetId) == "string"
+            and data.cursorAssetId:match("^%d+$")
+            and #data.cursorAssetId <= 18 then
+            cursorAssetId = data.cursorAssetId
+        end
         offsetX = math.floor(tonumber(data.offsetX) or 0)
         offsetY = math.floor(tonumber(data.offsetY) or 0)
         if type(data.cursorEnabled) == "boolean" then cursorEnabled = data.cursorEnabled end
@@ -131,7 +139,7 @@ cursor.BackgroundTransparency = 1
 cursor.BorderSizePixel = 0
 cursor.AnchorPoint = Vector2.new(0, 0)
 cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
-cursor.Image = CURSOR_IMAGE
+cursor.Image = CURSOR_IMAGE_PREFIX .. cursorAssetId
 cursor.ZIndex = 2147483647
 cursor.Active = false
 cursor.Selectable = false
@@ -139,8 +147,8 @@ cursor.Parent = gui
 
 local panel = Instance.new("Frame")
 panel.Name = "ConfigHub"
-panel.Size = UDim2.fromOffset(350, 430)
-panel.Position = UDim2.new(0.5, -175, 0.5, -215)
+panel.Size = UDim2.fromOffset(350, 498)
+panel.Position = UDim2.new(0.5, -175, 0.5, -249)
 panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
 panel.BackgroundTransparency = 0.13
 panel.BorderSizePixel = 0
@@ -209,10 +217,11 @@ subtitle.TextColor3 = Color3.fromRGB(177, 151, 211)
 
 local sizeText = label("", 82, 13, true)
 local lockText = label("", 136, 13, true)
-local offsetText = label("", 254, 13, true)
+local offsetText = label("", 312, 13, true)
 local modeButton
 local hint
 local resetLockState
+local cursorIdInput
 -- Estado declarado antes dos botões; a integração Delta é inicializada depois.
 local deltaHidden = false
 local setDeltaHidden
@@ -223,6 +232,10 @@ local function refresh()
     lockText.Text = "Fix Mobilador: " .. (lockMode == "PC" and "segurar RMB" or "clique RMB ON/OFF")
     offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
+    cursor.Image = CURSOR_IMAGE_PREFIX .. cursorAssetId
+    if cursorIdInput and not cursorIdInput:IsFocused() then
+        cursorIdInput.Text = cursorAssetId
+    end
     if modeButton then
         modeButton.Text = lockMode == "PC" and "Modo: PC (segurar RMB)" or "Modo: CENTRO (RMB alterna)"
     end
@@ -262,14 +275,58 @@ deltaButton = button("", 20, 202, 308, function()
     if setDeltaHidden then setDeltaHidden(not deltaHidden) end
 end)
 
-button("X−", 20, 286, 62, function() offsetX -= 1 refresh() saveConfig() end)
-button("X+", 88, 286, 62, function() offsetX += 1 refresh() saveConfig() end)
-button("Y−", 158, 286, 62, function() offsetY -= 1 refresh() saveConfig() end)
-button("Y+", 226, 286, 62, function() offsetY += 1 refresh() saveConfig() end)
+local cursorIdLabel = label("Cursor personalizado • Image Asset ID", 244, 12, true)
+cursorIdInput = Instance.new("TextBox")
+cursorIdInput.Name = "CursorAssetIdInput"
+cursorIdInput.Position = UDim2.fromOffset(20, 272)
+cursorIdInput.Size = UDim2.fromOffset(211, 34)
+cursorIdInput.BackgroundColor3 = Color3.fromRGB(42, 30, 61)
+cursorIdInput.BorderSizePixel = 0
+cursorIdInput.ClearTextOnFocus = false
+cursorIdInput.Font = Enum.Font.Gotham
+cursorIdInput.Text = cursorAssetId
+cursorIdInput.PlaceholderText = "ID da imagem"
+cursorIdInput.TextColor3 = Color3.fromRGB(246, 240, 255)
+cursorIdInput.PlaceholderColor3 = Color3.fromRGB(155, 131, 186)
+cursorIdInput.TextSize = 13
+cursorIdInput.TextXAlignment = Enum.TextXAlignment.Center
+cursorIdInput.ZIndex = 1003
+cursorIdInput.Parent = panel
+local cursorIdCorner = Instance.new("UICorner")
+cursorIdCorner.CornerRadius = UDim.new(0, 9)
+cursorIdCorner.Parent = cursorIdInput
 
-button("RESETAR CONFIGURAÇÕES", 20, 340, 308, function()
+local function applyCursorId()
+    local raw = cursorIdInput.Text:match("^%s*(.-)%s*$")
+    local id = raw:match("^%d+$") and raw or raw:match("^rbxassetid://(%d+)$")
+    if not id or #id > 18 then
+        cursorIdInput.Text = cursorAssetId
+        warn("[MOBHUB] Cursor ID inválido. Use apenas os dígitos do Asset ID.")
+        return
+    end
+    cursorAssetId = id
+    cursor.Image = CURSOR_IMAGE_PREFIX .. cursorAssetId
+    cursorIdInput.Text = cursorAssetId
+    saveConfig()
+end
+
+button("APLICAR", 239, 272, 89, function()
+    applyCursorId()
+    cursorIdInput:ReleaseFocus()
+end)
+connect(cursorIdInput.FocusLost, function()
+    if session.alive then applyCursorId() end
+end)
+
+button("X−", 20, 342, 62, function() offsetX -= 1 refresh() saveConfig() end)
+button("X+", 88, 342, 62, function() offsetX += 1 refresh() saveConfig() end)
+button("Y−", 158, 342, 62, function() offsetY -= 1 refresh() saveConfig() end)
+button("Y+", 226, 342, 62, function() offsetY += 1 refresh() saveConfig() end)
+
+button("RESETAR CONFIGURAÇÕES", 20, 396, 308, function()
     if resetLockState then resetLockState() end
     cursorSize = DEFAULT_SIZE
+    cursorAssetId = DEFAULT_CURSOR_ID
     offsetX, offsetY = 0, 0
     cursorEnabled = true
     lockMode = "PC"
@@ -278,7 +335,7 @@ button("RESETAR CONFIGURAÇÕES", 20, 340, 308, function()
     saveConfig()
 end)
 
-hint = label("Alt esquerdo / /e mob: hub  •  /e delta: Delta", 391, 10, false)
+hint = label("Alt esquerdo / /e mob: hub  •  /e delta: Delta", 451, 10, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
