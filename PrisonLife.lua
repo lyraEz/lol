@@ -789,6 +789,17 @@ local function requestItem(name)
     end)
     return true
 end
+local function requestStarterWeapons()
+    task.spawn(function()
+        for _,name in ipairs({"M9","Remington 870","AK-47"})do
+            if not alive then return end
+            while alive and pickupBusy do task.wait(0.15)end
+            if not alive then return end
+            requestItem(name)
+            task.wait(0.2)
+        end
+    end)
+end
 TeamTools:Section("Weapons & items","Only items present in the live map. Paid equipment still requires ownership.")
 TeamTools:Button({Title="Diagnose weapon availability",Icon="refresh-cw",Callback=function()
     local container=workspace:FindFirstChild("Prison_ITEMS")
@@ -817,29 +828,13 @@ TeamTools:ButtonRow({
 })
 TeamTools:Button({Title="Get starter weapons",Icon="crosshair",
     Description="Requests M9, Remington and AK-47 one at a time.",
-    Callback=function()
-        task.spawn(function()
-            for _,name in ipairs({"M9","Remington 870","AK-47"})do
-                if not alive then return end
-                requestItem(name)
-                task.wait(0.35)
-            end
-        end)
-    end})
+    Callback=requestStarterWeapons})
 local autoGear=false
 TeamTools:Toggle({Title="Get starter weapons after respawn",Flag="pl_autogear",
     Callback=function(v)autoGear=v end})
 Window:Connect(LocalPlayer.CharacterAdded,function()
     if autoGear then
-        task.delay(2,function()
-            if alive then
-                for _,name in ipairs({"M9","Remington 870","AK-47"})do
-                    if not alive then break end
-                    requestItem(name)
-                    task.wait(0.35)
-                end
-            end
-        end)
+        task.delay(2,function()if alive then requestStarterWeapons()end end)
     end
 end)
 
@@ -1256,11 +1251,7 @@ end)
 Window:Command("plfly",function()
     Window:SetFlag("pl_fly",not fly.on)
 end)
-Window:Command("plgear",function()
-    requestItem("M9")
-    task.delay(0.35,function()if alive then requestItem("Remington 870")end end)
-    task.delay(0.75,function()if alive then requestItem("AK-47")end end)
-end)
+Window:Command("plgear",requestStarterWeapons)
 Window:Command("plhelp",function()
     Window:Notify({Title="Prison commands",
         Text="/e pltp yard | /e plesp | /e plfly | /e plgear | /e prison",
