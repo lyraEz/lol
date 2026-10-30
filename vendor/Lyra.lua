@@ -254,7 +254,10 @@ for index, iconName in ipairs(Lyra.IconNames) do Lyra.IconIndex[iconName] = inde
 Lyra.IconAlias = {avatar = "user", players = "users", collection = "star", settings = "sliders-horizontal", creator = "code-xml",
     code = "code-xml", close = "x", expand = "maximize-2", undo = "undo-2", arrow = "arrow-right", reset = "rotate-ccw",
     trash = "trash-2", share = "share-2", edit = "pencil", game = "gamepad-2", refresh = "refresh-cw", warning = "triangle-alert",
-    success = "circle-check", error = "circle-x", hidden = "eye-off", sliders = "sliders-horizontal"}
+    success = "circle-check", error = "circle-x", hidden = "eye-off", sliders = "sliders-horizontal",
+    home = "star", ["map-pin"] = "bookmark", map = "server", navigation = "arrow-right",
+    eye = "user", crosshair = "gamepad-2", move = "gamepad-2", shield = "server",
+    package = "box", radar = "server", ["settings-2"] = "sliders-horizontal", power = "x"}
 -- The vector drawing used for each sprite when the sheet cannot be loaded.
 local VectorAlias = {["sliders-horizontal"] = "settings", ["code-xml"] = "creator", users = "players", server = "players", user = "avatar",
     bookmark = "collection", history = "undo", ["undo-2"] = "undo", ["arrow-right"] = "arrow", ["rotate-ccw"] = "reset", x = "close",
