@@ -4,6 +4,7 @@ local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
+local TextChatService = game:GetService("TextChatService")
 
 local CONFIG_FILE = "mobhub_cursor_config.json"
 local ENV_KEY = "MOBHUB_CURSOR_CONFIG"
@@ -34,9 +35,8 @@ local DEFAULT_SIZE, MIN_SIZE, MAX_SIZE = 32, 12, 100
 local cursorSize = DEFAULT_SIZE
 local offsetX, offsetY = 0, 0
 local cursorEnabled = true
- -- O modo PC prende o mouse onde ele está. CENTRO fica como alternativa.
+-- PC: LockCenter enquanto segura RMB. CENTRO: LockCenter permanente (1ª pessoa).
 local lockMode = "PC"
-local deltaBind = "B"
 
 local function configSnapshot()
     return {
@@ -44,8 +44,7 @@ local function configSnapshot()
         offsetX = offsetX,
         offsetY = offsetY,
         cursorEnabled = cursorEnabled,
-        lockMode = lockMode,
-        deltaBind = deltaBind
+        lockMode = lockMode
     }
 end
 
@@ -77,7 +76,6 @@ local function loadConfig()
         offsetY = math.floor(tonumber(data.offsetY) or 0)
         if type(data.cursorEnabled) == "boolean" then cursorEnabled = data.cursorEnabled end
         if data.lockMode == "PC" or data.lockMode == "CENTRO" then lockMode = data.lockMode end
-        if type(data.deltaBind) == "string" and Enum.KeyCode[data.deltaBind] and #data.deltaBind <= 12 then deltaBind = data.deltaBind end
     end
 end
 
@@ -132,8 +130,8 @@ cursor.Parent = gui
 
 local panel = Instance.new("Frame")
 panel.Name = "ConfigHub"
-panel.Size = UDim2.fromOffset(350, 413)
-panel.Position = UDim2.new(0.5, -175, 0.5, -206)
+panel.Size = UDim2.fromOffset(350, 385)
+panel.Position = UDim2.new(0.5, -175, 0.5, -192)
 panel.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
 panel.BackgroundTransparency = 0.13
 panel.BorderSizePixel = 0
@@ -206,22 +204,17 @@ local offsetText = label("", 210, 13, true)
 local modeButton
 local hint
 local resetLockState
-local deltaBindButton
-local waitingForBind = false
 
 local function refresh()
     sizeText.Text = "Cursor size: " .. cursorSize
-    lockText.Text = "Fix Mobilador: " .. (lockMode == "PC" and "segurar RMB" or "RMB alterna o centro")
+    lockText.Text = "Fix Mobilador: " .. (lockMode == "PC" and "RMB segurado" or "sempre centro")
     offsetText.Text = string.format("Hotspot offset: X %d  |  Y %d", offsetX, offsetY)
     cursor.Size = UDim2.fromOffset(cursorSize, cursorSize)
     if modeButton then
-        modeButton.Text = lockMode == "PC" and "Modo: PC (segurar)" or "Modo: CENTRO (clique ON/OFF)"
+        modeButton.Text = lockMode == "PC" and "Modo: PC (segurar RMB)" or "Modo: CENTRO (1ª pessoa)"
     end
-    if deltaBindButton then deltaBindButton.Text = waitingForBind and "Pressione uma tecla..." or ("Delta: " .. deltaBind .. " (alterar)") end
     if hint then
-        hint.Text = lockMode == "PC"
-            and "Alt: GUI  •  Segure RMB: câmera"
-            or "Alt: GUI  •  RMB: travar / liberar centro"
+        hint.Text = "/e mob: hub  •  /e delta: ocultar Delta"
     end
 end
 
@@ -240,11 +233,6 @@ local cursorToggle = button("Cursor ON/OFF", 130, 110, 198, function()
     saveConfig()
 end)
 
-deltaBindButton = button("", 20, 200, 308, function()
-    waitingForBind = true
-    refresh()
-end)
-
 modeButton = button("", 20, 164, 308, function()
     if resetLockState then resetLockState() end
     lockMode = lockMode == "PC" and "CENTRO" or "PC"
@@ -252,24 +240,23 @@ modeButton = button("", 20, 164, 308, function()
     saveConfig()
 end)
 
-button("X−", 20, 262, 62, function() offsetX -= 1 refresh() saveConfig() end)
-button("X+", 88, 262, 62, function() offsetX += 1 refresh() saveConfig() end)
-button("Y−", 158, 262, 62, function() offsetY -= 1 refresh() saveConfig() end)
-button("Y+", 226, 262, 62, function() offsetY += 1 refresh() saveConfig() end)
+button("X−", 20, 238, 62, function() offsetX -= 1 refresh() saveConfig() end)
+button("X+", 88, 238, 62, function() offsetX += 1 refresh() saveConfig() end)
+button("Y−", 158, 238, 62, function() offsetY -= 1 refresh() saveConfig() end)
+button("Y+", 226, 238, 62, function() offsetY += 1 refresh() saveConfig() end)
 
-button("RESETAR CONFIGURAÇÕES", 20, 315, 308, function()
+button("RESETAR CONFIGURAÇÕES", 20, 292, 308, function()
     if resetLockState then resetLockState() end
     cursorSize = DEFAULT_SIZE
     offsetX, offsetY = 0, 0
     cursorEnabled = true
     lockMode = "PC"
-    deltaBind = "B"
     -- A liberação do RMB cuida do unlock; nunca força aqui.
     refresh()
     saveConfig()
 end)
 
-hint = label("Alt: GUI  •  RMB: câmera  •  /e mob: Delta", 364, 11, false)
+hint = label("/e mob: hub  •  /e delta: Delta", 340, 11, false)
 hint.TextColor3 = Color3.fromRGB(155, 131, 186)
 hint.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -295,195 +282,35 @@ connect(UIS.InputEnded, function(input)
     end
 end)
 
--- Máquina de estados: PC = botão pressionado; CENTRO = clique alterna.
-local keyDebounce = {}
-local pcHeld, centerEnabled = false, false
-local rmbDown, rmbBlocked = false, false
-local savedMousePos = nil
-local ownedMode = nil
-local generation = 0
-local centerSyncElapsed = 0
-local CENTER_SYNC_INTERVAL = 0.1
-local POST_INPUT_DELAY = 0.12
-
-local function ownMouseLock(mode)
-    if not session.alive or not UIS.MouseEnabled then return false end
-    if UIS.MouseBehavior == mode then return true end
-    local ok = pcall(function()
-        UIS.MouseBehavior = mode
-    end)
-    if ok then ownedMode = mode end
-    return ok
-end
-
-local function releaseOwnedLock()
-    local previouslyOwned = ownedMode
-    ownedMode = nil
-    if not previouslyOwned then return end
-    local current = UIS.MouseBehavior
-    if current == previouslyOwned then
+-- Controle de mouse: usa o fluxo nativo confirmado pelo usuário.
+-- RenderStepped reimpõe LockCenter durante RMB. O modo CENTRO
+-- representa APENAS_PRIMEIRA_PESSOA = true do script de referência.
+local lastMouseBehavior = nil
+local function unlockMouse()
+    if lastMouseBehavior == Enum.MouseBehavior.LockCenter
+        and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then
         pcall(function()
             UIS.MouseBehavior = Enum.MouseBehavior.Default
         end)
     end
-end
-
-local function requestRelease()
-    generation += 1
-    local token = generation
-    task.delay(POST_INPUT_DELAY, function()
-        if not session.alive or generation ~= token or rmbDown then return end
-        if centerEnabled or pcHeld then return end
-        releaseOwnedLock()
-    end)
-end
-
-local function finishPC()
-    if not pcHeld then return end
-    pcHeld = false
-    savedMousePos = nil
-    requestRelease()
-end
-
-local function onMouseDown(gameProcessed)
-    if rmbDown then return end -- debouncing de InputBegan duplicado
-    rmbDown = true
-    rmbBlocked = gameProcessed == true
-    if rmbBlocked or not UIS.MouseEnabled then return end
-
-    generation += 1
-    local token = generation
-    if lockMode == "CENTRO" then
-        centerEnabled = not centerEnabled
-        centerSyncElapsed = 0
-        -- Lock e unlock ocorrem somente depois de InputEnded.
-        -- Evita competir com a captura de RMB feita pelo cliente Android.
-        return
-    end
-
-    if pcHeld then return end
-    pcHeld = true
-    savedMousePos = UIS:GetMouseLocation()
-    local wasLockedCenter = UIS.MouseBehavior == Enum.MouseBehavior.LockCenter
-    if not wasLockedCenter then
-        task.defer(function()
-            if session.alive and generation == token and pcHeld and rmbDown then
-                -- LockCenter fornece deltas relativos sem bater na borda, se o Android suportar.
-                ownMouseLock(Enum.MouseBehavior.LockCenter)
-            end
-        end)
-    end
-end
-
-local function onMouseUp()
-    if not rmbDown then return end
-    rmbDown = false
-    if rmbBlocked then
-        rmbBlocked = false
-        return
-    end
-
-    if lockMode == "PC" then
-        finishPC()
-        return
-    end
-
-    generation += 1
-    local token = generation
-    if centerEnabled then
-        -- Clique 1: prende no centro APÓS a liberação física do RMB.
-        task.delay(POST_INPUT_DELAY, function()
-            if not session.alive or generation ~= token or not centerEnabled or rmbDown then return end
-            ownMouseLock(Enum.MouseBehavior.LockCenter)
-        end)
-    else
-        -- Clique 2: devolve o cursor ao modo livre.
-        task.delay(POST_INPUT_DELAY, function()
-            if not session.alive or generation ~= token or centerEnabled or rmbDown then return end
-            releaseOwnedLock()
-        end)
-    end
-end
-
-resetLockState = function()
-    pcHeld = false
-    centerEnabled = false
-    savedMousePos = nil
-    generation += 1
-    centerSyncElapsed = 0
-    local token = generation
-    task.delay(POST_INPUT_DELAY, function()
-        if not session.alive or generation ~= token or rmbDown then return end
-        releaseOwnedLock()
-    end)
+    lastMouseBehavior = nil
 end
 
 session.stop = function()
     if not session.alive then return end
     session.alive = false
-    pcHeld, centerEnabled = false, false
-    generation += 1
     for _, connection in ipairs(session.connections) do
         connection:Disconnect()
     end
     table.clear(session.connections)
-    -- Executar novamente deve liberar o lock antigo e não criar handlers duplicados.
-    releaseOwnedLock()
+    unlockMouse()
     pcall(function() gui:Destroy() end)
     if env[SESSION_KEY] == session then env[SESSION_KEY] = nil end
 end
 
-connect(UIS.InputBegan, function(input, gameProcessed)
-    if not session.alive or not gui.Parent then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        onMouseDown(gameProcessed)
-        return
-    end
-    local key = input.KeyCode
-    if waitingForBind and key ~= Enum.KeyCode.Unknown then
-        deltaBind = key.Name
-        waitingForBind = false
-        refresh()
-        saveConfig()
-        return
-    end
-    if key.Name == deltaBind and not gameProcessed then
-        if session.toggleDelta then session.toggleDelta() end
-        return
-    end
-    if (key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt) and not keyDebounce[key] then
-        keyDebounce[key] = true
-        panel.Visible = not panel.Visible
-    end
-end)
-
-connect(UIS.InputEnded, function(input)
-    if not session.alive then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        onMouseUp()
-        return
-    end
-    local key = input.KeyCode
-    if key == Enum.KeyCode.LeftAlt or key == Enum.KeyCode.RightAlt then
-        keyDebounce[key] = nil
-    end
-end)
-
--- Se o Roblox sobrescrever LockCenter, recupera apenas quando o RMB está
--- solto e num intervalo limitado. Nunca disputa o mouse dentro do clique.
-connect(RunService.Heartbeat, function(dt)
-    if not session.alive then return end
-    if not ((lockMode == "CENTRO" and centerEnabled and not rmbDown) or (lockMode == "PC" and pcHeld and rmbDown)) or not UIS.MouseEnabled then
-        centerSyncElapsed = 0
-        return
-    end
-    centerSyncElapsed += dt
-    if centerSyncElapsed < CENTER_SYNC_INTERVAL then return end
-    centerSyncElapsed = 0
-    if UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
-        ownMouseLock(Enum.MouseBehavior.LockCenter)
-    end
-end)
+resetLockState = function()
+    unlockMouse()
+end
 
 pcall(function() UIS.MouseIconEnabled = false end)
 
@@ -494,106 +321,176 @@ connect(RunService.RenderStepped, function()
         return
     end
 
-    if cursorEnabled and UIS.MouseEnabled then
-        if UIS.MouseIconEnabled then UIS.MouseIconEnabled = false end
-        local pos
-        if (lockMode == "CENTRO" and centerEnabled) or (lockMode == "PC" and pcHeld) then
+    if not UIS.MouseEnabled then
+        cursor.Visible = false
+        return
+    end
+
+    local rightHeld = false
+    pcall(function()
+        rightHeld = UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+    end)
+
+    -- O método funcional: alterna o MouseBehavior dentro de RenderStepped.
+    -- O painel aberto libera o mouse para interagir com os controles.
+    local lockRequested = not panel.Visible and (lockMode == "CENTRO" or rightHeld)
+    local desired = lockRequested
+        and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
+    if UIS.MouseBehavior ~= desired then
+        pcall(function() UIS.MouseBehavior = desired end)
+    end
+    lastMouseBehavior = desired
+
+    if cursorEnabled then
+        if UIS.MouseIconEnabled then
+            pcall(function() UIS.MouseIconEnabled = false end)
+        end
+        local pos = UIS:GetMouseLocation()
+        if lockRequested then
             local camera = workspace.CurrentCamera
             if camera then
                 local view = camera.ViewportSize
                 pos = Vector2.new(view.X * 0.5 - cursorSize * 0.5, view.Y * 0.5 - cursorSize * 0.5)
             end
-        elseif pcHeld and savedMousePos then
-            pos = savedMousePos
         end
-        pos = pos or UIS:GetMouseLocation()
         cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
         cursor.Visible = true
     else
         cursor.Visible = false
-        if not UIS.MouseIconEnabled then UIS.MouseIconEnabled = true end
+        if not UIS.MouseIconEnabled then
+            pcall(function() UIS.MouseIconEnabled = true end)
+        end
     end
 end)
 
--- Delta: sem botão flutuante; alterna com bind ou /e mob.
-local deltaRoot = (type(gethui) == "function" and gethui()) or CoreGui
+-- Delta: visível por padrão. Oculte somente com /e delta.
+-- Sem botão na tela, bind B ou controle na hub.
+local deltaRoot = CoreGui
+if type(gethui) == "function" then
+    local ok, root = pcall(gethui)
+    if ok and root then deltaRoot = root end
+end
 local deltaHidden = false
 local deltaState = {}
 local deltaScanElapsed = 0
+
 local function deltaAsset(path)
     path = tostring(path):lower()
-    if path:find("internals", 1, true) or path:find("assets/i", 1, true)
+    if path:find("internals", 1, true)
+        or path:find("assets/i", 1, true)
         or path:find("delta", 1, true) then return true end
     for i = 1, 18 do
-        if path:find("i" .. i .. "%.") or path:match("i" .. i .. "$") then return true end
+        if path:find("i" .. i .. "%.") or path:match("i" .. i .. "$") then
+            return true
+        end
     end
     return false
 end
-local function deltaCandidates()
-    local found = {}
-    for _, root in ipairs({deltaRoot, CoreGui}) do
+
+local function rememberAndHide(obj, property)
+    if not obj or not obj.Parent then return end
+    if not deltaState[obj] then
+        local ok, oldValue = pcall(function() return obj[property] end)
+        if not ok then return end
+        deltaState[obj] = {property = property, value = oldValue}
+    end
+    pcall(function() obj[property] = false end)
+end
+
+local function scanAndSuppressDelta()
+    local roots = {CoreGui}
+    if deltaRoot ~= CoreGui then table.insert(roots, deltaRoot) end
+    local seen = {}
+
+    for _, root in ipairs(roots) do
         for _, top in ipairs(root:GetChildren()) do
-            if top ~= gui and top.Name ~= "RobloxGui" and not found[top] then
-                local isDelta = false
-                for _, desc in ipairs(top:GetDescendants()) do
-                    if (desc:IsA("ImageButton") or desc:IsA("ImageLabel")) and deltaAsset(desc.Image) then
-                        isDelta = true
-                        break
+            if not seen[top] and top ~= gui and top.Name ~= "RobloxGui"
+                and top.Name ~= GUI_NAME then
+                seen[top] = true
+                local hasIY = top:FindFirstChild("I") and top:FindFirstChild("Y")
+                if not hasIY then
+                    local foundDelta = false
+                    for _, desc in ipairs(top:GetDescendants()) do
+                        if (desc:IsA("ImageButton") or desc:IsA("ImageLabel"))
+                            and deltaAsset(desc.Image) then
+                            foundDelta = true
+                            if not top:IsA("ScreenGui") then
+                                rememberAndHide(desc, "Visible")
+                                if desc:IsA("GuiButton") then
+                                    pcall(function() desc.Active = false end)
+                                end
+                            end
+                        end
+                    end
+                    if foundDelta and top:IsA("ScreenGui") then
+                        rememberAndHide(top, "Enabled")
                     end
                 end
-                if isDelta then found[top] = true end
             end
         end
     end
-    return found
+
+    local dc = CoreGui:FindFirstChild("DrawingContainer")
+    if dc and dc:IsA("GuiObject") then
+        rememberAndHide(dc, "Visible")
+    end
 end
+
 local function setDeltaHidden(hidden)
     deltaHidden = hidden
     if not hidden then
-        for obj, original in pairs(deltaState) do
+        for obj, old in pairs(deltaState) do
             if obj and obj.Parent then
                 pcall(function()
-                    if original.property == "Enabled" then obj.Enabled = original.value
-                    else obj.Visible = original.value end
+                    obj[old.property] = old.value
                 end)
+                if obj:IsA("GuiButton") then
+                    pcall(function() obj.Active = true end)
+                end
             end
         end
         table.clear(deltaState)
-        return
+    else
+        pcall(scanAndSuppressDelta)
     end
+    print("[MOBHUB] Delta " .. (hidden and "escondido" or "visível"))
 end
-local function toggleDelta()
-    setDeltaHidden(not deltaHidden)
-    print("[MOBHUB] Delta " .. (deltaHidden and "oculto" or "visível"))
-end
-local function suppressDelta()
-    for top in pairs(deltaCandidates()) do
-        if top:IsA("ScreenGui") then
-            if not deltaState[top] then deltaState[top] = {property = "Enabled", value = top.Enabled} end
-            if top.Enabled then top.Enabled = false end
-        elseif top:IsA("GuiObject") then
-            if not deltaState[top] then deltaState[top] = {property = "Visible", value = top.Visible} end
-            if top.Visible then top.Visible = false end
-        end
-    end
-    local dc = CoreGui:FindFirstChild("DrawingContainer")
-    if dc and dc:IsA("GuiObject") then
-        if not deltaState[dc] then deltaState[dc] = {property = "Visible", value = dc.Visible} end
-        if dc.Visible then dc.Visible = false end
-    end
-end
-session.toggleDelta = toggleDelta
+
 connect(RunService.Heartbeat, function(dt)
     if not session.alive or not deltaHidden then return end
     deltaScanElapsed += dt
-    if deltaScanElapsed >= 0.1 then
+    if deltaScanElapsed >= 0.15 then
         deltaScanElapsed = 0
-        pcall(suppressDelta)
+        pcall(scanAndSuppressDelta)
     end
 end)
-connect(LocalPlayer.Chatted, function(message)
-    if message:lower():match("^%s*/e%s+mob%s*$") then toggleDelta() end
+
+local lastCommand, lastCommandAt = nil, 0
+local function handleChatCommand(text)
+    if not session.alive or type(text) ~= "string" then return end
+    local command = text:lower():match("^%s*/e%s+(%a+)%s*$")
+    if command ~= "mob" and command ~= "delta" then return end
+
+    -- SendingMessage e Chatted podem disparar para a mesma mensagem.
+    local now = os.clock()
+    if lastCommand == command and now - lastCommandAt < 0.75 then return end
+    lastCommand, lastCommandAt = command, now
+
+    if command == "mob" then
+        panel.Visible = not panel.Visible
+        print("[MOBHUB] Hub " .. (panel.Visible and "aberta" or "escondida"))
+    else
+        setDeltaHidden(not deltaHidden)
+    end
+end
+
+connect(LocalPlayer.Chatted, handleChatCommand)
+pcall(function()
+    connect(TextChatService.SendingMessage, function(message)
+        handleChatCommand(message.Text)
+    end)
 end)
+
 local oldStop = session.stop
 session.stop = function()
     if not session.alive then return end
@@ -601,5 +498,5 @@ session.stop = function()
     oldStop()
 end
 
-print("[MOBHUB] Cursor + Fix Mobilador carregado (modo " .. lockMode .. ").")
-print("[MOBHUB] PC = segurar RMB; CENTRO = clicar uma vez para travar, outra para liberar.")
+print("[MOBHUB] Fix Mobilador carregado. /e mob = hub | /e delta = Delta")
+print("[MOBHUB] Modo PC: segurar RMB. Modo CENTRO: primeira pessoa permanente.")
