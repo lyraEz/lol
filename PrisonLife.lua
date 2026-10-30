@@ -264,8 +264,8 @@ local function pointer()
     local position=UIS:GetMouseLocation()
     return Vector2.new(position.X,position.Y)
 end
-local function visibleTarget(part,p)
-    if not combat.wall then return true end
+local function visibleTarget(part,p,checkWalls)
+    if checkWalls==false or (checkWalls==nil and not combat.wall) then return true end
     local cameraNow=workspace.CurrentCamera
     local ray=RaycastParams.new()
     ray.FilterType=Enum.RaycastFilterType.Exclude
@@ -275,7 +275,7 @@ local function visibleTarget(part,p)
     local trace=workspace:Raycast(from,part.Position-from,ray)
     return not trace or (p.Character and trace.Instance:IsDescendantOf(p.Character))
 end
-local function closestTarget(maxDistance, radius)
+local function closestTarget(maxDistance, radius, ignoreFov, checkWalls, bodyPart)
     local cameraNow=workspace.CurrentCamera
     if not cameraNow then return nil end
     local pointerPos=pointer()
@@ -285,13 +285,13 @@ local function closestTarget(maxDistance, radius)
     for _,p in ipairs(Players:GetPlayers()) do
         if legalTarget(p) then
             local model=p.Character
-            local part=model and (model:FindFirstChild(combat.part) or model:FindFirstChild("HumanoidRootPart"))
+            local part=model and (model:FindFirstChild(bodyPart or combat.part) or model:FindFirstChild("HumanoidRootPart"))
             if part and ownRoot and (part.Position-ownRoot.Position).Magnitude<=(maxDistance or combat.maxDistance) then
                 local worldDistance=(part.Position-ownRoot.Position).Magnitude
                 local projected,onScreen=cameraNow:WorldToViewportPoint(part.Position)
-                if onScreen and projected.Z>0 then
+                if ignoreFov or (onScreen and projected.Z>0) then
                     local distance=(Vector2.new(projected.X,projected.Y)-pointerPos).Magnitude
-                    if distance<=(radius or combat.radius) and visibleTarget(part,p) then
+                    if (ignoreFov or distance<=(radius or combat.radius)) and visibleTarget(part,p,checkWalls) then
                         local humanoid=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
                         local score=distance
                         if combat.priority=="Nearest" then score=worldDistance
@@ -422,7 +422,7 @@ local function startSilentHook()
     controller.remote=remoteEvent
     controller.target=function()
         if not alive or not silent.enabled or not equippedFirearm() then return nil end
-        return closestTarget(silent.maxDistance, silent.radius)
+        return closestTarget(silent.maxDistance, silent.radius, silent.ignoreFov, silent.wall, silent.part)
     end
     controller.chance=silent.hitChance
     controller.prediction=silent.prediction
