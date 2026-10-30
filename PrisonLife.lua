@@ -699,10 +699,16 @@ local function findItem(name)
     local items=workspace:FindFirstChild("Prison_ITEMS")
     local giver=items and items:FindFirstChild("giver")
     if not giver then return nil end
+    local root=getRoot()
+    local chosen,distance=nil,math.huge
     for _,child in ipairs(giver:GetChildren())do
-        if child.Name:lower()==name:lower() then return child end
+        if child.Name:lower()==name:lower() then
+            local part=child:IsA("BasePart") and child or child:FindFirstChildWhichIsA("BasePart",true)
+            local value=(root and part) and (root.Position-part.Position).Magnitude or 0
+            if value<distance then chosen,distance=child,value end
+        end
     end
-    return nil
+    return chosen
 end
 local function inventoryHas(name)
     local backpack=LocalPlayer:FindFirstChild("Backpack")
