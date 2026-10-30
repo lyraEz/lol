@@ -610,6 +610,28 @@ CombatTab:Toggle({Title="Target only focused player",Flag="pl_focus_only",
 Window:Connect(Players.PlayerAdded,function()task.defer(refreshFocusList)end)
 Window:Connect(Players.PlayerRemoving,function()task.defer(refreshFocusList)end)
 refreshFocusList()
+local focusStatus=CombatTab:Label("Focus: Auto | Priority: Crosshair")
+local focusUpdate=0
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not alive then return end
+    focusUpdate=focusUpdate+dt
+    if focusUpdate<0.75 then return end
+    focusUpdate=0
+    if combat.selectedPlayer=="" then
+        focusStatus:Set("Focus: Auto | Priority: "..combat.priority)
+        return
+    end
+    local p=Players:FindFirstChild(combat.selectedPlayer)
+    local r=p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+    local h=p and p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+    local mine=getRoot()
+    if not p or not r or not h or not mine then
+        focusStatus:Set("Focus @"..combat.selectedPlayer..": unavailable")
+    else
+        focusStatus:Set("Focus @"..p.Name.." | "..math.floor((r.Position-mine.Position).Magnitude)
+            .." studs | "..math.floor(h.Health).." HP")
+    end
+end)
 
 CombatTab:Section("Team filter", "Choose which teams can be targeted.")
 CombatTab:Toggle({Title="Guards",Default=true,Flag="pl_target_guards",Callback=function(v)combat.guards=v end})
