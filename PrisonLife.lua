@@ -463,6 +463,52 @@ CombatTab:Slider({Title="Silent hit chance",Min=1,Max=100,Default=95,Suffix="%",
         if g.LyraPrisonSilentController then g.LyraPrisonSilentController.chance=value end
     end})
 
+CombatTab:Dropdown({Title="Silent target part",Options={"Head","HumanoidRootPart"},
+    Default="Head",Flag="pl_silent_part",Callback=function(v)silent.part=v end})
+CombatTab:Toggle({Title="Silent aim 360 (ignore FOV)",Flag="pl_silent_anywhere",
+    Description="Ignore screen FOV, but still respect distance, team and priority.",
+    Callback=function(v)silent.ignoreFov=v end})
+CombatTab:Toggle({Title="Silent aim wall check",Default=true,Flag="pl_silent_wall",
+    Callback=function(v)silent.wall=v end})
+CombatTab:Slider({Title="Movement prediction",Min=0,Max=30,Default=0,Suffix=" / 100 s",
+    Flag="pl_silent_prediction",Callback=function(v)
+        silent.prediction=v/100
+        local env=type(getgenv)=="function" and getgenv() or _G
+        if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==2 then
+            env.LyraPrisonSilentController.prediction=silent.prediction
+        end
+    end})
+CombatTab:Section("Silent aim diagnostics",
+    "Observed means a game shot reached the hook. Adjusted means bullet data changed, not that the server registered damage.")
+local shotStatus=CombatTab:Label("Enable silent aim, equip a gun and fire to inspect shot interception.")
+CombatTab:Button({Title="Refresh shot diagnostics",Icon="refresh-cw",Callback=function()
+    local env=type(getgenv)=="function" and getgenv() or _G
+    local hook=env.LyraPrisonSilentController
+    if not hook or hook.version~=2 then
+        shotStatus:Set("Hook not installed in this session.")
+        return
+    end
+    shotStatus:Set("Observed: "..tostring(hook.observed or 0)
+        .." | adjusted: "..tostring(hook.adjusted or 0)
+        .." | unsupported: "..tostring(hook.unsupported or 0)
+        .." | format: "..tostring(hook.lastFormat or "none"))
+end})
+local shotStatusElapsed=0
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not alive then return end
+    shotStatusElapsed=shotStatusElapsed+dt
+    if shotStatusElapsed<1.5 then return end
+    shotStatusElapsed=0
+    local env=type(getgenv)=="function" and getgenv() or _G
+    local hook=env.LyraPrisonSilentController
+    if hook and hook.version==2 and silent.enabled then
+        shotStatus:Set("Shots: "..tostring(hook.observed or 0)
+            .." | changed: "..tostring(hook.adjusted or 0)
+            .." | unknown: "..tostring(hook.unsupported or 0)
+            .." | payload: "..tostring(hook.lastFormat or "-"))
+    end
+end})
+
 CombatTab:Toggle({Title="Enable camera aim",Flag="pl_combat_aim",Callback=function(v)combat.aim=v end})
 CombatTab:Toggle({Title="Hold E / right mouse to aim",Flag="pl_combat_hold",
     Description="Turn this off for always-on assist, including touch controls.",
@@ -545,10 +591,10 @@ Window:Connect(RunService.RenderStepped,function(dt)
     if not alive then return end
     local cameraNow=workspace.CurrentCamera
     if not cameraNow then return end
-    fovCircle.Visible=combat.showCircle and (combat.aim or combat.trigger) and not Window.Visible
+    fovCircle.Visible=combat.showCircle and (combat.aim or combat.trigger or silent.enabled) and not Window.Visible
     if fovCircle.Visible then
         local point=pointer()
-        local visualRadius=math.min(combat.radius,240)
+        local visualRadius=math.min((silent.enabled and not combat.aim and not combat.trigger) and silent.radius or combat.radius,240)
         fovCircle.Size=UDim2.fromOffset(visualRadius*2,visualRadius*2)
         fovCircle.Position=UDim2.fromOffset(point.X,point.Y)
     end
