@@ -755,7 +755,10 @@ local function requestItem(name)
                 pickupBusy=false
                 return
             end
-            root.CFrame=CFrame.new(part.Position+Vector3.new(0,2.6,1))
+            local offset=root.Position-part.Position
+            local flat=Vector3.new(offset.X,0,offset.Z)
+            local towardPlayer=flat.Magnitude>0.01 and flat.Unit or Vector3.new(0,0,1)
+            root.CFrame=CFrame.new(part.Position+towardPlayer*1.6+Vector3.new(0,2,0))
             root.AssemblyLinearVelocity=Vector3.zero
             task.wait(0.25)
             local prompt=giver:FindFirstChildWhichIsA("ProximityPrompt",true)
@@ -772,6 +775,12 @@ local function requestItem(name)
                 end
             elseif click and type(fireclickdetector)=="function" then
                 pcall(fireclickdetector,click)
+            elseif type(firetouchinterest)=="function" then
+                pcall(function()
+                    firetouchinterest(root,part,0)
+                    task.wait(0.15)
+                    firetouchinterest(root,part,1)
+                end)
             end
         end
         local deadline=os.clock()+2.2
