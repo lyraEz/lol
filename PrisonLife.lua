@@ -653,11 +653,6 @@ end})
 
 
 -- Extend shutdown to include temporary graphics changes.
-local restoreGraphicsOnShutdown=function()
-    if lowGraphics then setLowGraphics(false)end
-    if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView=initialFov end
-end
-
 local baseCleanup=cleanup
 cleanup=function()
     restoreCollision()
@@ -667,7 +662,6 @@ cleanup=function()
         if movement.speed then hum.WalkSpeed=16 end
         if movement.jump then hum.UseJumpPower=true;hum.JumpPower=50 end
     end
-    restoreGraphicsOnShutdown()
     baseCleanup()
 end
 
@@ -776,6 +770,13 @@ misc:Button({Title="Unload hub",Icon="power",Callback=function()
     Window:Confirm({Title="Unload Prison Life hub?",Text="Stop scripts and remove highlights/UI.",
         Confirm="Unload",Callback=function()Window:Destroy()end})
 end})
+
+local priorCleanup=cleanup
+cleanup=function()
+    setLowGraphics(false)
+    if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView=initialFov end
+    priorCleanup()
+end
 
 local Settings=Window:SettingsTab()
 Settings:Button({Title="Restore lighting", Icon="rotate-ccw", Callback=function()
