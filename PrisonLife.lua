@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v1.6.0
+-- Lyra Prison Life hub v1.7.0
 -- Designed for Prison Life (place 155615604) with the Lyra UI library.
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -40,7 +40,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v1.6.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v1.7.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -48,6 +48,7 @@ local Window = Lyra:CreateWindow({
 local Home = Window:Tab({Title="Overview", Icon="home"})
 Home:Section("Prison Life", "Mobile-friendly utilities powered by Lyra UI.")
 Home:Paragraph("Map positions follow the classic map. Game updates may change destinations.")
+Home:Paragraph("v1.7: independent ESP labels, team filters, health bars and optional avatar headshots on the radar.")
 Home:Button({Title="Show current position", Icon="map-pin", Callback=function()
     local r = getRoot()
     Window:Notify({Title="Your position", Text=r and tostring(r.Position) or "No character", Kind="info"})
@@ -1906,5 +1907,5 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v1.6", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
+Window:Notify({Title="Lyra Prison Life v1.7", Text="Combat, ESP, teams, gear, teleports and movement loaded.", Kind="success"})
 return Window
