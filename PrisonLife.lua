@@ -715,38 +715,77 @@ local function inventoryHas(name)
     local char=LocalPlayer.Character
     return (backpack and backpack:FindFirstChild(name)) or (char and char:FindFirstChild(name))
 end
+local pickupBusy=false
 local function requestItem(name)
     if inventoryHas(name) then
-        Window:Notify({Title="Already owned",Text=name.." is in your inventory.",Kind="info"})
+        Window:Status(name.." already in your inventory","success")
         return true
     end
     local giver=findItem(name)
-    local handler=remote("ItemHandler")
-    local pickup=giver and giver:FindFirstChild("ITEMPICKUP",true)
-    if not pickup then
-        Window:Notify({Title="Item unavailable",Text=name.." has no pickup in this server.",Kind="warning"})
+    if not giver then
+        Window:Notify({Title="Weapon spawn missing",Text=name.." is not currently loaded.",Kind="warning"})
         return false
     end
-    if not handler or not handler:IsA("RemoteFunction") then
-        Window:Notify({Title="Pickup error",Text="Remote ItemHandler is unavailable.",Kind="error"})
+    if pickupBusy then
+        Window:Status("Another pickup is in progress. Try again shortly.","warning")
         return false
     end
-    Window:Status("Requesting "..name.."...","loading")
+    pickupBusy=true
     task.spawn(function()
-        local ok,response=pcall(function()return handler:InvokeServer(pickup)end)
-        if not alive then return end
-        if not ok then
-            Window:Notify({Title="Pickup request failed",Text=tostring(response),Kind="error"})
-            return
+        local pickup=giver:FindFirstChild("ITEMPICKUP",true)
+        local handler=remote("ItemHandler")
+        local mode="proximity"
+        local oldRoot=getRoot()
+        local returnPosition=oldRoot and oldRoot.CFrame
+        local success=true
+        if pickup and handler and handler:IsA("RemoteFunction") then
+            mode="remote"
+            success=pcall(function()handler:InvokeServer(pickup)end)
+        else
+            local part=giver:IsA("BasePart") and giver or giver:FindFirstChildWhichIsA("BasePart",true)
+            if not part then
+                Window:Status(name..": no pickup part found","warning")
+                pickupBusy=false
+                return
+            end
+            local root=getRoot()
+            if not root then
+                Window:Status("Spawn your character before requesting items","warning")
+                pickupBusy=false
+                return
+            end
+            root.CFrame=CFrame.new(part.Position+Vector3.new(0,2.6,1))
+            root.AssemblyLinearVelocity=Vector3.zero
+            task.wait(0.25)
+            local prompt=giver:FindFirstChildWhichIsA("ProximityPrompt",true)
+            local click=giver:FindFirstChildWhichIsA("ClickDetector",true)
+            if prompt and prompt.Enabled then
+                if type(fireproximityprompt)=="function" then
+                    pcall(fireproximityprompt,prompt)
+                else
+                    pcall(function()
+                        prompt:InputHoldBegin()
+                        task.wait(math.max(prompt.HoldDuration,0.1))
+                        prompt:InputHoldEnd()
+                    end)
+                end
+            elseif click and type(fireclickdetector)=="function" then
+                pcall(fireclickdetector,click)
+            end
         end
-        local untilTime=os.clock()+2.8
-        while alive and not inventoryHas(name) and os.clock()<untilTime do task.wait(0.12)end
-        if not alive then return end
+        local deadline=os.clock()+2.2
+        while alive and not inventoryHas(name) and os.clock()<deadline do task.wait(0.12) end
         local delivered=inventoryHas(name)~=nil
-        Window:Notify({Title=delivered and "Weapon received" or "Weapon not received",
-            Text=delivered and (name.." added to inventory.")
-                or (name..": server did not deliver. Check your team or gamepass."),
-            Kind=delivered and "success" or "warning",Duration=7})
+        if mode=="proximity" and returnPosition and oldRoot and oldRoot.Parent then
+            oldRoot.CFrame=returnPosition
+        end
+        pickupBusy=false
+        if not alive then return end
+        if delivered then
+            Window:Notify({Title="Weapon received",Text=name.." is now in inventory.",Kind="success"})
+        else
+            Window:Notify({Title="Weapon not received",Text=name.." ("..mode.."). The server may require proximity, team or a gamepass.",Kind="warning"})
+        end
     end)
     return true
 end
