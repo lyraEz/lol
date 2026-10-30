@@ -304,10 +304,9 @@ connect(UIS.InputEnded, function(input)
     end
 end)
 
--- O motor Roblox precisa de LockCenter a cada RenderStepped para controlar
--- a câmera como no fix nativo fornecido pelo usuário. O clique e sua soltura
--- são acompanhados também por eventos, porque o polling do mouse pode ficar
--- "preso" em true em alguns clientes Android após soltar o botão.
+-- O fix da câmera usa LockCenter enquanto o RMB está pressionado
+-- (ou no modo CENTRO ativado por clique). Jogos em primeira pessoa
+-- controlam o próprio mouse, e não devemos forçar Default neles.
 local rmbHeld = false
 local rmbReleased = false
 local rmbEndedSinceLastFrame = false
@@ -316,13 +315,53 @@ local centerLatched = false
 local leftAltHeld = false
 local currentLockRequested = false
 local ownedMouseLock = false
+local nativeFirstPersonLockAssisted = false
+
+-- Ao sair de LockCenter, alguns clientes Android ainda reportam a
+-- coordenada antiga (centro). Seguimos MouseMovement.Delta nesse intervalo
+-- apenas para o desenho do cursor, sem teletransportar o mouse nativo.
+local freeCursorBeforeLock = nil
+local releaseCursorOverride = nil
+local releaseRawMousePosition = nil
+local mouseMoveDelta = Vector2.zero
+local previousCustomLock = false
+local nativeIconBeforeCustom = UIS.MouseIconEnabled
+local customIconHidden = false
+
+local function restoreNativeCursor()
+    if customIconHidden then
+        customIconHidden = false
+        -- Devolve ao jogo o controle do cursor nativo quando nosso cursor
+        -- não deve aparecer (ex.: FPS com mira própria).
+        pcall(function() UIS.MouseIconEnabled = nativeIconBeforeCustom end)
+    end
+end
+
+local function setCustomCursorIcon(shouldShow)
+    if shouldShow then
+        if not customIconHidden then
+            nativeIconBeforeCustom = UIS.MouseIconEnabled
+            customIconHidden = true
+        end
+        if UIS.MouseIconEnabled then
+            pcall(function() UIS.MouseIconEnabled = false end)
+        end
+    else
+        restoreNativeCursor()
+    end
+end
 
 local function unlockMouse()
     currentLockRequested = false
-    if ownedMouseLock and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then
+    if (ownedMouseLock or nativeFirstPersonLockAssisted)
+        and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then
         pcall(function() UIS.MouseBehavior = Enum.MouseBehavior.Default end)
     end
     ownedMouseLock = false
+    nativeFirstPersonLockAssisted = false
+    previousCustomLock = false
+    releaseCursorOverride = nil
+    restoreNativeCursor()
 end
 
 local function rightMouseDown()
@@ -332,10 +371,28 @@ local function rightMouseDown()
     return ok and down or false
 end
 
+local function gameIsFirstPerson(camera)
+    if LocalPlayer.CameraMode == Enum.CameraMode.LockFirstPerson then
+        return true
+    end
+    if not camera then return false end
+    -- Distância câmera-foco distingue a primeira pessoa da câmera padrão
+    -- em terceira pessoa. CameraType.Scriptable pode usar Focus arbitrário,
+    -- então nesse caso usamos somente o LockCenter nativo como indício.
+    if camera.CameraType ~= Enum.CameraType.Scriptable then
+        local distance = (camera.CFrame.Position - camera.Focus.Position).Magnitude
+        return distance <= 1.15
+    end
+    return false
+end
+
 local function beginRmb()
     if rmbHeld then return end
     rmbHeld = true
     rmbReleased = false
+    if not currentLockRequested then
+        freeCursorBeforeLock = UIS:GetMouseLocation()
+    end
     if lockMode == "CENTRO" and not panel.Visible then
         centerLatched = not centerLatched
     end
@@ -343,7 +400,7 @@ end
 
 local function endRmb()
     rmbHeld = false
-    -- Prioridade para InputEnded mesmo se IsMouseButtonPressed ficar stale.
+    -- InputEnded prevalece sobre polling atrasado no Android.
     rmbReleased = true
     rmbEndedSinceLastFrame = true
 end
@@ -352,7 +409,6 @@ local function setHubVisible(visible)
     if panel.Visible == visible then return end
     panel.Visible = visible
     if visible then
-        -- Abrir hub nunca deixa o mouse preso, mesmo no CENTRO.
         centerLatched = false
         endRmb()
     end
@@ -361,11 +417,12 @@ end
 resetLockState = function()
     centerLatched = false
     endRmb()
-    -- Evita nova captura a partir de um IsMouseButtonPressed antigo.
     physicalRmbWasDown = rightMouseDown()
+    freeCursorBeforeLock = nil
+    unlockMouse()
 end
 
-connect(UIS.InputBegan, function(input, gameProcessed)
+connect(UIS.InputBegan, function(input)
     if not session.alive then return end
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         if not panel.Visible then beginRmb() end
@@ -373,8 +430,7 @@ connect(UIS.InputBegan, function(input, gameProcessed)
     end
     if input.KeyCode == Enum.KeyCode.LeftAlt and not leftAltHeld then
         leftAltHeld = true
-        local focused = UIS:GetFocusedTextBox()
-        if not focused then
+        if not UIS:GetFocusedTextBox() then
             setHubVisible(not panel.Visible)
         end
     end
@@ -386,6 +442,13 @@ connect(UIS.InputEnded, function(input)
         endRmb()
     elseif input.KeyCode == Enum.KeyCode.LeftAlt then
         leftAltHeld = false
+    end
+end)
+
+connect(UIS.InputChanged, function(input)
+    if not session.alive then return end
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        mouseMoveDelta += input.Delta
     end
 end)
 
@@ -401,8 +464,6 @@ session.stop = function()
     if env[SESSION_KEY] == session then env[SESSION_KEY] = nil end
 end
 
-pcall(function() UIS.MouseIconEnabled = false end)
-
 connect(RunService.RenderStepped, function()
     if not session.alive then return end
     if not gui.Parent or not cursor.Parent then
@@ -412,62 +473,123 @@ connect(RunService.RenderStepped, function()
 
     if not UIS.MouseEnabled then
         if currentLockRequested then unlockMouse() end
+        setCustomCursorIcon(false)
         cursor.Visible = false
+        mouseMoveDelta = Vector2.zero
         return
     end
 
     local physicalDown = rightMouseDown()
     if physicalDown and not physicalRmbWasDown then
-        -- Um InputEnded recente vence polling físico desatualizado: não religar.
-        -- Se houver uma próxima pressão real, InputBegan (ou nova borda física) a captura.
         if not rmbHeld and not rmbEndedSinceLastFrame then beginRmb() end
     elseif not physicalDown and physicalRmbWasDown then
-        -- Fallback quando o Android não encaminha InputEnded.
         endRmb()
     end
     physicalRmbWasDown = physicalDown
     rmbEndedSinceLastFrame = false
 
-    -- O InputEnded tem precedência sobre polling "true" preso.
     local rightHeld = rmbHeld or (physicalDown and not rmbReleased)
-    local lockRequested = not panel.Visible
+    local camera = workspace.CurrentCamera
+    local firstPerson = gameIsFirstPerson(camera)
+
+    -- Uma câmera personalizada pode não usar CameraMode/Focus. Se ela
+    -- já prendeu o mouse sozinha sem intervenção nossa, respeite isso.
+    local gameOwnedCenter = not ownedMouseLock
+        and not nativeFirstPersonLockAssisted
+        and not previousCustomLock
+        and not panel.Visible
+        and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter
+
+    local nativeAiming = not panel.Visible and (firstPerson or gameOwnedCenter)
+    local customLockRequested = not nativeAiming and not panel.Visible
         and ((lockMode == "PC" and rightHeld)
             or (lockMode == "CENTRO" and centerLatched))
+
+    local lockRequested = nativeAiming or customLockRequested
     currentLockRequested = lockRequested
 
-    -- Mesmo método do fix que funcionou: escrever o modo no RenderStepped.
-    -- Só mudamos quando o valor realmente diverge, para evitar escritas nativas extras.
-    local desired = lockRequested
-        and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
-    if UIS.MouseBehavior ~= desired then
-        local ok = pcall(function() UIS.MouseBehavior = desired end)
-        if ok and lockRequested then ownedMouseLock = true end
-    elseif lockRequested then
-        ownedMouseLock = true
-    end
-    if not lockRequested then ownedMouseLock = false end
-
-    if cursorEnabled then
-        if UIS.MouseIconEnabled then
-            pcall(function() UIS.MouseIconEnabled = false end)
+    if nativeAiming then
+        -- FPS nativo: nunca impor MouseBehavior.Default. Em experiências
+        -- first-person em que o core não o faz, LockCenter ajuda a câmera.
+        if UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+            local ok = pcall(function()
+                UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+            end)
+            if ok then nativeFirstPersonLockAssisted = true end
         end
-        local pos
-        if lockRequested then
-            local camera = workspace.CurrentCamera
-            if camera then
-                local view = camera.ViewportSize
-                pos = Vector2.new(view.X * 0.5 - cursorSize * 0.5, view.Y * 0.5 - cursorSize * 0.5)
+        ownedMouseLock = false
+        previousCustomLock = false
+        releaseCursorOverride = nil
+    elseif customLockRequested then
+        if not previousCustomLock then
+            freeCursorBeforeLock = freeCursorBeforeLock or UIS:GetMouseLocation()
+            releaseCursorOverride = nil
+        end
+        if UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+            local ok = pcall(function()
+                UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+            end)
+            if ok then ownedMouseLock = true end
+        else
+            ownedMouseLock = true
+        end
+        previousCustomLock = true
+    else
+        if previousCustomLock then
+            -- Primeiro desbloqueio já devolve o cursor visual para a posição
+            -- anterior ao lock, sem precisar clicar outra vez.
+            releaseCursorOverride = freeCursorBeforeLock or UIS:GetMouseLocation()
+            releaseRawMousePosition = UIS:GetMouseLocation()
+            freeCursorBeforeLock = nil
+        end
+        previousCustomLock = false
+
+        -- Não reescrever Default a cada frame se o Roblox tiver decidido
+        -- controlar o mouse. Soltar apenas o lock que foi imposto por nós.
+        if ownedMouseLock or nativeFirstPersonLockAssisted or panel.Visible then
+            if UIS.MouseBehavior ~= Enum.MouseBehavior.Default then
+                pcall(function()
+                    UIS.MouseBehavior = Enum.MouseBehavior.Default
+                end)
             end
         end
-        pos = pos or UIS:GetMouseLocation()
+        ownedMouseLock = false
+        nativeFirstPersonLockAssisted = false
+    end
+
+    local shouldDrawCursor = cursorEnabled and not nativeAiming
+    setCustomCursorIcon(shouldDrawCursor)
+
+    if shouldDrawCursor then
+        local pos
+        if customLockRequested and camera then
+            local view = camera.ViewportSize
+            pos = Vector2.new(
+                view.X * 0.5 - cursorSize * 0.5,
+                view.Y * 0.5 - cursorSize * 0.5
+            )
+        else
+            local rawPosition = UIS:GetMouseLocation()
+            if releaseCursorOverride and releaseRawMousePosition then
+                if (rawPosition - releaseRawMousePosition).Magnitude > 2 then
+                    -- Mouse real voltou a atualizar; não usar posição virtual.
+                    releaseCursorOverride = nil
+                else
+                    local view = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+                    releaseCursorOverride = Vector2.new(
+                        math.clamp(releaseCursorOverride.X + mouseMoveDelta.X, 0, view.X),
+                        math.clamp(releaseCursorOverride.Y + mouseMoveDelta.Y, 0, view.Y)
+                    )
+                end
+            end
+            pos = releaseCursorOverride or rawPosition
+        end
         cursor.Position = UDim2.fromOffset(pos.X + offsetX, pos.Y + offsetY)
         cursor.Visible = true
     else
         cursor.Visible = false
-        if not UIS.MouseIconEnabled then
-            pcall(function() UIS.MouseIconEnabled = true end)
-        end
     end
+    mouseMoveDelta = Vector2.zero
 end)
 
 -- Ocultação do Delta: detecção inicial apenas ao esconder e resposta a
