@@ -693,7 +693,8 @@ TeamTools:Button({Title="Criminal spawn",Icon="navigation",
     Callback=function()
         teleport(Vector3.new(-920,100,2138))
     end})
-local weaponChoices={"M9","Remington 870","AK-47","MP5","M4A1","Taser","Hammer","Crude Knife"}
+local weaponChoices={"M9","Remington 870","AK-47","MP5","M4A1","Taser",
+    "FAL","M700","Revolver","C4 Explosive","Riot Shield","Lunch","Hammer","Crude Knife"}
 local selectedWeapon="M9"
 local function findItem(name)
     local items=workspace:FindFirstChild("Prison_ITEMS")
@@ -815,8 +816,36 @@ TeamTools:Button({Title="Diagnose weapon availability",Icon="refresh-cw",Callbac
              " | pickup points: "..available,
         Kind=handler and giver and "info" or "warning",Duration=9})
 end})
-TeamTools:Dropdown({Title="Weapon",Options=weaponChoices,Default="M9",
+local weaponDropdown=TeamTools:Dropdown({Title="Weapon",Options=weaponChoices,Default="M9",
     Flag="pl_item",Callback=function(v)selectedWeapon=v end})
+TeamTools:Button({Title="Refresh available weapons",Icon="refresh-cw",Callback=function()
+    local options,seen={},{}
+    local giver=workspace:FindFirstChild("Prison_ITEMS")
+    giver=giver and giver:FindFirstChild("giver")
+    if giver then
+        for _,obj in ipairs(giver:GetChildren())do
+            if not seen[obj.Name]then seen[obj.Name]=true;table.insert(options,obj.Name)end
+        end
+    end
+    local backpack=LocalPlayer:FindFirstChild("Backpack")
+    for _,container in ipairs({backpack,LocalPlayer.Character})do
+        if container then
+            for _,obj in ipairs(container:GetChildren())do
+                if obj:IsA("Tool") and not seen[obj.Name]then
+                    seen[obj.Name]=true;table.insert(options,obj.Name)
+                end
+            end
+        end
+    end
+    if #options==0 then
+        Window:Status("No weapon entries currently loaded","warning")
+        return
+    end
+    table.sort(options)
+    weaponDropdown:SetOptions(options,false)
+    selectedWeapon=weaponDropdown:Get() or options[1]
+    Window:Status("Found "..#options.." available item names","success")
+end})
 TeamTools:ButtonRow({
     {Title="Request",Icon="package",Primary=true,Callback=function()requestItem(selectedWeapon)end},
     {Title="Go to item",Icon="navigation",Callback=function()
