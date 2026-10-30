@@ -297,6 +297,7 @@ end)
 -- "preso" em true em alguns clientes Android após soltar o botão.
 local rmbHeld = false
 local rmbReleased = false
+local rmbEndedSinceLastFrame = false
 local physicalRmbWasDown = false
 local centerLatched = false
 local leftAltHeld = false
@@ -331,6 +332,7 @@ local function endRmb()
     rmbHeld = false
     -- Prioridade para InputEnded mesmo se IsMouseButtonPressed ficar stale.
     rmbReleased = true
+    rmbEndedSinceLastFrame = true
 end
 
 local function setHubVisible(visible)
@@ -403,13 +405,15 @@ connect(RunService.RenderStepped, function()
 
     local physicalDown = rightMouseDown()
     if physicalDown and not physicalRmbWasDown then
-        -- Fallback quando o Android não encaminha InputBegan.
-        if not rmbHeld then beginRmb() end
+        -- Um InputEnded recente vence polling físico desatualizado: não religar.
+        -- Se houver uma próxima pressão real, InputBegan (ou nova borda física) a captura.
+        if not rmbHeld and not rmbEndedSinceLastFrame then beginRmb() end
     elseif not physicalDown and physicalRmbWasDown then
         -- Fallback quando o Android não encaminha InputEnded.
         endRmb()
     end
     physicalRmbWasDown = physicalDown
+    rmbEndedSinceLastFrame = false
 
     -- O InputEnded tem precedência sobre polling "true" preso.
     local rightHeld = rmbHeld or (physicalDown and not rmbReleased)
