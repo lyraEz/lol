@@ -1167,7 +1167,7 @@ end
 
 -- Lightweight 2D radar, local-only. Does not use Drawing or exploit-only APIs.
 local radar={on=false,range=500,size=170,position="Top right",dots={},last=0,
-    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7}
+    showAllies=true,showNames=false,rotate=true,showWithHub=false,dotSize=7,refresh=0.05}
 local radarGui=Instance.new("ScreenGui")
 radarGui.Name="LyraPrisonRadar"
 radarGui.ResetOnSpawn=false
@@ -1266,12 +1266,27 @@ RadarTab:Toggle({Title="Show radar",Flag="pl_radar",Callback=function(v)
     radarFrame.Visible=v
 end})
 RadarTab:Slider({Title="Radar range",Min=100,Max=2500,Default=500,Suffix=" studs",
-    Flag="pl_radar_range",Callback=function(v)radar.range=v end})
+    Flag="pl_radar_range",Callback=function(v)radar.range=v;radarRangeLabel.Text="Range: "..v.." studs" end})
 RadarTab:Slider({Title="Radar size",Min=110,Max=260,Default=170,Suffix=" px",
     Flag="pl_radar_size",Callback=function(v)
         radar.size=v
         radarFrame.Size=UDim2.fromOffset(v,v)
     end})
+RadarTab:Section("Display", "Choose the radar layout without covering the game controls.")
+RadarTab:Toggle({Title="Show teammates",Default=true,Flag="pl_radar_allies",
+    Callback=function(v)radar.showAllies=v end})
+RadarTab:Toggle({Title="Player names on radar",Flag="pl_radar_names",
+    Callback=function(v)radar.showNames=v end})
+RadarTab:Toggle({Title="Rotate with camera",Default=true,Flag="pl_radar_rotate",
+    Callback=function(v)radar.rotate=v end})
+RadarTab:Toggle({Title="Keep radar visible with hub",Flag="pl_radar_overui",
+    Callback=function(v)radar.showWithHub=v end})
+RadarTab:Slider({Title="Marker size",Min=4,Max=13,Default=7,Suffix=" px",
+    Flag="pl_radar_marker",Callback=function(v)radar.dotSize=v end})
+RadarTab:Slider({Title="Radar refresh",Min=8,Max=30,Default=20,Suffix=" fps",
+    Flag="pl_radar_refresh",Callback=function(v)radar.refresh=1/v end})
+RadarTab:Paragraph("Blue = guards  |  Orange = inmates  |  Red = criminals. The bright marker shows your focused player.")
+
 local function updateRadarPosition(pos)
     radar.position=pos
     local points={
@@ -1287,6 +1302,40 @@ end
 RadarTab:Dropdown({Title="Overlay corner",
     Options={"Top right","Top left","Bottom right","Bottom left"},
     Default="Top right",Flag="pl_radar_pos",Callback=updateRadarPosition})
+-- Drag the radar on PC or Android. Changing the preset corner resets its position.
+local dragging=false
+local dragInput=nil
+local dragStart=nil
+local frameStart=nil
+Window:Connect(radarFrame.InputBegan,function(input)
+    if input.UserInputType==Enum.UserInputType.Touch
+        or input.UserInputType==Enum.UserInputType.MouseButton1 then
+        dragging=true
+        dragInput=input
+        dragStart=Vector2.new(input.Position.X,input.Position.Y)
+        frameStart=radarFrame.AbsolutePosition
+    end
+end)
+Window:Connect(UIS.InputChanged,function(input)
+    if not dragging or not dragStart then return end
+    if input.UserInputType~=Enum.UserInputType.MouseMovement
+        and input~=dragInput then return end
+    local pos=Vector2.new(input.Position.X,input.Position.Y)
+    local delta=pos-dragStart
+    local view=workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
+        or Vector2.new(1920,1080)
+    radarFrame.AnchorPoint=Vector2.new(0,0)
+    radarFrame.Position=UDim2.fromOffset(
+        math.clamp(frameStart.X+delta.X,0,math.max(0,view.X-radar.size)),
+        math.clamp(frameStart.Y+delta.Y,0,math.max(0,view.Y-radar.size)))
+end)
+Window:Connect(UIS.InputEnded,function(input)
+    if input==dragInput or input.UserInputType==Enum.UserInputType.MouseButton1 then
+        dragging=false
+        dragInput=nil
+    end
+end)
+
 local function radarDot(player)
     local d=radar.dots[player]
     if d then return d end
