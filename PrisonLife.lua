@@ -332,39 +332,75 @@ local function startSilentHook()
     end
     local global=type(getgenv)=="function" and getgenv() or _G
     local controller=global.LyraPrisonSilentController
-    if type(controller)~="table" or type(controller.enable)~="function" then
-        controller={enabled=false, target=nil, chance=95, remote=remoteEvent}
+    if type(controller)~="table" or controller.version~=2 then
+        if type(controller)=="table" and type(controller.enable)=="function" then
+            pcall(function()controller.enable(false)end)
+        end
+        controller={version=2,enabled=false,target=nil,chance=95,remote=remoteEvent,
+            observed=0,adjusted=0,unsupported=0,lastFormat="none",lastTarget="none"}
         local oldNamecall
+        local function rewriteShot(value,hitPart,hitPosition,depth)
+            if type(value)~="table" or depth>4 then return value,0,nil end
+            local copy={}
+            for key,item in pairs(value)do copy[key]=item end
+            -- Current GunRemotes protocol: {originVector3, hitPositionVector3, hitPart}.
+            if typeof(value[1])=="Vector3" and typeof(value[2])=="Vector3"
+                and typeof(value[3])=="Instance" then
+                copy[2]=hitPosition
+                copy[3]=hitPart
+                return copy,1,"vector-triple"
+            end
+            -- Older Prison Life remotes: {RayObject=Ray, Hit=BasePart, ...}.
+            if typeof(value.RayObject)=="Ray" or typeof(value.Hit)=="Instance" then
+                local oldRay=value.RayObject
+                local origin=typeof(oldRay)=="Ray" and oldRay.Origin
+                    or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position)
+                    or hitPosition
+                local direction=hitPosition-origin
+                if direction.Magnitude>0.01 then
+                    copy.RayObject=Ray.new(origin,direction.Unit*math.max(direction.Magnitude,1000))
+                    copy.Hit=hitPart
+                    copy.Distance=direction.Magnitude
+                    copy.Cframe=CFrame.lookAt(hitPosition,hitPosition+direction.Unit)
+                    return copy,1,"legacy-ray"
+                end
+            end
+            local changed=0
+            local detected=nil
+            for key,item in pairs(value)do
+                if type(item)=="table" then
+                    local result,count,kind=rewriteShot(item,hitPart,hitPosition,depth+1)
+                    if count>0 then
+                        copy[key]=result
+                        changed=changed+count
+                        detected=kind
+                    end
+                end
+            end
+            return copy,changed,detected
+        end
         local function interception(self,...)
             if self==controller.remote and controller.enabled
                 and getnamecallmethod()=="FireServer"
                 and (type(checkcaller)~="function" or not checkcaller()) then
                 local args=table.pack(...)
                 local bullets=args[1]
-                if type(bullets)=="table" and #bullets>0 and math.random(100)<=controller.chance then
+                controller.observed=controller.observed+1
+                if type(bullets)=="table" and math.random(100)<=controller.chance then
                     local part=type(controller.target)=="function" and controller.target() or nil
-                    if part and part.Parent then
-                        local modified={}
-                        for key,bullet in pairs(bullets)do
-                            if type(bullet)=="table" then
-                                local shot={}
-                                for k,v in pairs(bullet)do shot[k]=v end
-                                local ray=shot.RayObject
-                                local cam=workspace.CurrentCamera
-                                local origin=typeof(ray)=="Ray" and ray.Origin
-                                    or (cam and cam.CFrame.Position) or part.Position
-                                local delta=part.Position-origin
-                                if delta.Magnitude>0.01 then
-                                    shot.RayObject=Ray.new(origin,delta.Unit*math.max(delta.Magnitude,1000))
-                                    shot.Hit=part
-                                    shot.Distance=delta.Magnitude
-                                    shot.Cframe=CFrame.lookAt(part.Position,part.Position+delta.Unit)
-                                end
-                                modified[key]=shot
-                            else modified[key]=bullet end
+                    if part and part.Parent and part:IsA("BasePart") then
+                        local destination=part.Position+part.AssemblyLinearVelocity*(controller.prediction or 0)
+                        local modified,count,format=rewriteShot(bullets,part,destination,0)
+                        if count>0 then
+                            args[1]=modified
+                            controller.adjusted=controller.adjusted+count
+                            controller.lastFormat=format or "unknown"
+                            controller.lastTarget=part.Parent.Name
+                            return oldNamecall(self,table.unpack(args,1,args.n))
+                        else
+                            controller.unsupported=controller.unsupported+1
+                            controller.lastFormat="unsupported payload"
                         end
-                        args[1]=modified
-                        return oldNamecall(self,table.unpack(args,1,args.n))
                     end
                 end
             end
