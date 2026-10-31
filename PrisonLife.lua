@@ -1,4 +1,4 @@
--- Lyra Prison Life hub v2.1.0
+-- Lyra Prison Life hub v2.2.0
 -- Designed for Prison Life (place 155615604) with LibralyUI (vendor/Lyra.lua).
 -- Team ESP, combat camera assist, movement, navigation and player utilities.
 if game.PlaceId ~= 155615604 then
@@ -48,7 +48,7 @@ local libOk, Lyra = pcall(function()
 end)
 if not libOk then warn("Lyra UI failed to load: " .. tostring(Lyra)); return end
 local Window = Lyra:CreateWindow({
-    Title="Prison Life", Subtitle="lyraEz | hub v2.1.0",
+    Title="Prison Life", Subtitle="lyraEz | hub v2.2.0",
     Theme="Lavender", ChatCommand="prison", ConfigFile="LyraUI/PrisonLife",
     Status="Ready",
     OnDestroy=function() alive=false;cleanup() end,
@@ -56,7 +56,7 @@ local Window = Lyra:CreateWindow({
 local Home = Window:Tab({Title="Overview", Icon="home"})
 Home:Section("Prison Life", "Mobile-friendly utilities powered by Lyra UI.")
 Home:Paragraph("Map positions follow the classic map. Game updates may change destinations.")
-Home:Paragraph("v2.1: stable native shooting, hybrid silent aim, safe ammo handling, expanded tuning and upgraded radar.")
+Home:Paragraph("v2.2: native ray silent aim, preserved shooting state, remembered UI position and expanded utilities.")
 Home:Button({Title="Show current position", Icon="map-pin", Callback=function()
     local r = getRoot()
     Window:Notify({Title="Your position", Text=r and tostring(r.Position) or "No character", Kind="info"})
@@ -123,6 +123,11 @@ PlayersTab:ButtonRow({
 })
 
 PlayersTab:Section("Player actions","Search by name or partial username.")
+local playerActionOffset="Behind"
+local followPlayer=false
+local followDistance=6
+PlayersTab:Dropdown({Title="Teleport position",Options={"Behind","In front","Above"},Default="Behind",
+    Flag="pl_player_offset",Callback=function(v)playerActionOffset=v end})
 PlayersTab:ButtonRow({
     {Title="Teleport to player",Icon="navigation",Callback=function()
         local p=findPlayer()
@@ -131,7 +136,10 @@ PlayersTab:ButtonRow({
             local me=getRoot()
             if me then
                 last.position=me.CFrame
-                me.CFrame=r.CFrame*CFrame.new(0,0,4)
+                local offset=playerActionOffset=="Above" and CFrame.new(0,6,0)
+                    or playerActionOffset=="In front" and CFrame.new(0,0,-4)
+                    or CFrame.new(0,0,4)
+                me.CFrame=r.CFrame*offset
                 Window:Status("Teleported to "..p.Name,"success")
             end
         else Window:Status("Selected player is not spawned","warning")end
@@ -145,6 +153,24 @@ PlayersTab:ButtonRow({
         end
     end}
 })
+PlayersTab:Toggle({Title="Follow selected player",Flag="pl_player_follow",
+    Description="Uses normal Humanoid movement and stops when the target disappears.",
+    Callback=function(v)followPlayer=v end})
+PlayersTab:Slider({Title="Follow distance",Min=3,Max=25,Default=6,Suffix=" studs",
+    Flag="pl_player_follow_distance",Callback=function(v)followDistance=v end})
+local followClock=0
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not alive or not followPlayer then return end
+    followClock=followClock+dt
+    if followClock<0.15 then return end
+    followClock=0
+    local target=findPlayer()
+    local targetRoot=target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    local hum=LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if targetRoot and hum and hum.Health>0 then
+        hum:MoveTo(targetRoot.Position-targetRoot.CFrame.LookVector*followDistance)
+    end
+end)
 
 Window:Connect(Players.PlayerAdded,function()task.defer(refresh)end)
 Window:Connect(Players.PlayerRemoving,function()task.defer(refresh)end)
@@ -302,7 +328,7 @@ local combat={
     radius=180,smooth=0.24,part="Head",wall=true,team=true,
     guards=true,inmates=true,criminals=true,triggerCooldown=0.22,
     maxDistance=800,selectedPlayer="",focusOnly=false,priority="Crosshair",
-    sticky=false,lockedPlayer="",prediction=0}
+    sticky=false,lockedPlayer="",prediction=0,forcefield=true}
 local combatGui=Instance.new("ScreenGui")
 combatGui.Name="LyraPrisonCombat"
 combatGui.ResetOnSpawn=false
@@ -360,6 +386,7 @@ local function legalTarget(p)
     if not combat[role(p)] then return false end
     if combat.focusOnly and (combat.selectedPlayer=="" or p.Name~=combat.selectedPlayer) then return false end
     local model=p.Character
+    if combat.forcefield and model and model:FindFirstChildOfClass("ForceField") then return false end
     local hum=model and model:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health>0
 end
@@ -424,12 +451,12 @@ local function closestTarget(maxDistance, radius, ignoreFov, checkWalls, bodyPar
     return nearest,best
 end
 
--- The native weapon owns shooting cadence and state. Silent aim only redirects
--- validated bullet traces; the hybrid fallback adjusts the already-created
--- vector-triple payload without touching ammo, reload or shooting attributes.
+-- The native weapon owns shooting cadence, ammo and remote payload creation.
+-- Silent aim redirects the game's native workspace ray and leaves ShootEvent
+-- untouched. A named castRay hook is kept only as an executor fallback.
 local silent={enabled=false,hitChance=95,headChance=85,available=false,
     reason="Not initialized",maxDistance=800,radius=180,prediction=0,
-    ignoreFov=false,wall=true,part="Adaptive (head/body)",backend="Hybrid"}
+    ignoreFov=false,wall=true,part="Adaptive (head/body)",backend="Native ray"}
 local function equippedFirearm()
     local char=LocalPlayer.Character
     if not char then return nil end
@@ -451,19 +478,16 @@ local function startSilentHook()
     if not remoteEvent or not remoteEvent:IsA("RemoteEvent") then
         return false,"ShootEvent remote is missing"
     end
-    if type(hookmetamethod)~="function" or type(getnamecallmethod)~="function" then
-        return false,"Executor doesn't support namecall hooks"
-    end
     local global=executorEnv
     local controller=global.LyraPrisonSilentController
-    if type(controller)~="table" or controller.version~=5 then
+    if type(controller)~="table" or controller.version~=7 then
         if type(controller)=="table" and type(controller.enable)=="function" then
             pcall(function()controller.enable(false)end)
         end
-        controller={version=5,enabled=false,busy=false,target=nil,chance=95,
-            backend="Hybrid",remote=remoteEvent,rays=0,redirected=0,shots=0,
-            payloadAdjusted=0,bypassed=0,errors=0,lastMethod="none",
-            lastTarget="none",lastError="none"}
+        controller={version=7,enabled=false,busy=false,target=nil,chance=95,
+            backend="Native ray",remote=remoteEvent,rays=0,redirected=0,shots=0,
+            castCalls=0,castRedirected=0,castCandidates=0,bypassed=0,errors=0,
+            lastMethod="none",lastTarget="none",lastError="none"}
         local oldNamecall
         local function decodeRay(method,args)
             if method=="Raycast" and typeof(args[1])=="Vector3"
@@ -523,22 +547,6 @@ local function startSilentHook()
             controller.lastTarget=part.Parent.Name.."."..part.Name
             return part
         end
-        local function rewritePayload(payload,part)
-            if type(payload)~="table" then return nil,0 end
-            local outer=table.clone(payload)
-            local changed=0
-            for index,pellet in ipairs(payload)do
-                if type(pellet)=="table" and typeof(pellet[1])=="Vector3"
-                    and typeof(pellet[2])=="Vector3" then
-                    local copy=table.clone(pellet)
-                    copy[2]=targetPosition(part)
-                    copy[3]=part
-                    outer[index]=copy
-                    changed=changed+1
-                end
-            end
-            return changed>0 and outer or nil,changed
-        end
         local function interception(self,...)
             local method=getnamecallmethod()
             local original=table.pack(...)
@@ -546,24 +554,9 @@ local function startSilentHook()
             if self==controller.remote and method=="FireServer"
                 and not executorCall then
                 controller.shots=controller.shots+1
-                if controller.enabled and (controller.backend=="Hybrid"
-                    or controller.backend=="Payload fallback")
-                    and math.random(1,100)<=controller.chance then
-                    local part=choosePart()
-                    if part then
-                        local payload,count=rewritePayload(original[1],part)
-                        if payload then
-                            local changed=table.clone(original)
-                            changed[1]=payload
-                            controller.payloadAdjusted=controller.payloadAdjusted+count
-                            controller.lastMethod="ShootEvent payload"
-                            return oldNamecall(self,table.unpack(changed,1,changed.n))
-                        end
-                    end
-                end
             end
             if self~=workspace or not controller.enabled or controller.busy
-                or executorCall or controller.backend=="Payload fallback" then
+                or executorCall or controller.backend=="castRay only" then
                 return oldNamecall(self,table.unpack(original,1,original.n))
             end
             local origin,direction,kind=decodeRay(method,original)
@@ -599,14 +592,119 @@ local function startSilentHook()
             end
             return oldNamecall(self,table.unpack(original,1,original.n))
         end
-        local wrapped=type(newcclosure)=="function" and newcclosure(interception) or interception
-        local ok,prior=pcall(function()return hookmetamethod(game,"__namecall",wrapped)end)
-        if not ok or type(prior)~="function" then
-            return false,ok and "Hook did not return a valid original function" or tostring(prior)
+        if type(hookmetamethod)=="function" and type(getnamecallmethod)=="function" then
+            local wrapped=type(newcclosure)=="function" and newcclosure(interception) or interception
+            local ok,prior=pcall(function()return hookmetamethod(game,"__namecall",wrapped)end)
+            if ok and type(prior)=="function" then
+                oldNamecall=prior
+                controller.namecallReady=true
+                controller.namecallReason="workspace ray fallback ready"
+            else
+                controller.namecallReady=false
+                controller.namecallReason=ok and "namecall hook returned no original" or tostring(prior)
+            end
+        else
+            controller.namecallReady=false
+            controller.namecallReason="namecall hooks unavailable"
         end
-        oldNamecall=prior
         controller.enable=function(value) controller.enabled=value end
         global.LyraPrisonSilentController=controller
+    end
+    local function installCastHooks()
+        if controller.castReady then return true,controller.castReason or "castRay ready" end
+        if type(getgc)~="function" or type(hookfunction)~="function" then
+            return false,"getgc/hookfunction unavailable"
+        end
+        local function getFunctionName(object)
+            if type(debug)=="table" and type(debug.getinfo)=="function" then
+                local ok,info=pcall(debug.getinfo,object,"nS")
+                if ok and type(info)=="table" then return info.name,info.what end
+            end
+            if type(debug)=="table" and type(debug.info)=="function" then
+                local ok,name=pcall(debug.info,object,"n")
+                if ok then return name,"Lua" end
+            end
+            return nil,nil
+        end
+        local matches={}
+        local scanned,scanError=pcall(function()
+            local ok,objects=pcall(getgc,true)
+            if not ok or type(objects)~="table" then
+                ok,objects=pcall(getgc)
+            end
+            if not ok or type(objects)~="table" then error(objects) end
+            for _,object in pairs(objects)do
+                if type(object)=="function" then
+                    local name,kind=getFunctionName(object)
+                    if type(name)=="string" and name:lower()=="castray"
+                        and (kind==nil or kind=="Lua") then
+                        table.insert(matches,object)
+                    end
+                end
+            end
+        end)
+        if not scanned then return false,tostring(scanError) end
+        controller.castCandidates=#matches
+        if #matches==0 then return false,"no native castRay candidate found" end
+        local hooked=0
+        for _,candidate in ipairs(matches)do
+            if hooked>=8 then break end
+            local originalCast
+            local function castWrapper(...)
+                local args=table.pack(...)
+                local useCast=controller.backend=="castRay only"
+                    or (controller.backend=="Automatic" and not controller.namecallReady)
+                if not controller.enabled or not useCast then
+                    return originalCast(table.unpack(args,1,args.n))
+                end
+                controller.castCalls=controller.castCalls+1
+                if math.random(1,100)>controller.chance then
+                    controller.bypassed=controller.bypassed+1
+                    return originalCast(table.unpack(args,1,args.n))
+                end
+                local origin=nil
+                local char=LocalPlayer.Character
+                local head=char and char:FindFirstChild("Head")
+                local cameraNow=workspace.CurrentCamera
+                for index=1,math.min(args.n,4)do
+                    local value=args[index]
+                    if typeof(value)=="Vector3" then
+                        local nearHead=head and (value-head.Position).Magnitude<=75
+                        local nearCamera=cameraNow and (value-cameraNow.CFrame.Position).Magnitude<=75
+                        if nearHead or nearCamera then origin=value;break end
+                    end
+                end
+                if not origin or not equippedFirearm() then
+                    return originalCast(table.unpack(args,1,args.n))
+                end
+                controller.busy=true
+                local ok,part=pcall(function()
+                    return type(controller.target)=="function" and controller.target() or nil
+                end)
+                controller.busy=false
+                if not ok then
+                    controller.errors=controller.errors+1
+                    controller.lastError=tostring(part):sub(1,180)
+                    return originalCast(table.unpack(args,1,args.n))
+                end
+                if not part or not part:IsA("BasePart") or not part.Parent then
+                    controller.bypassed=controller.bypassed+1
+                    return originalCast(table.unpack(args,1,args.n))
+                end
+                local destination=part.Position+part.AssemblyLinearVelocity*(controller.prediction or 0)
+                controller.castRedirected=controller.castRedirected+1
+                controller.lastMethod="native castRay"
+                controller.lastTarget=part.Parent.Name.."."..part.Name
+                return part,destination
+            end
+            local wrapped=type(newcclosure)=="function" and newcclosure(castWrapper) or castWrapper
+            local ok,prior=pcall(function()return hookfunction(candidate,wrapped)end)
+            if ok and type(prior)=="function" then originalCast=prior;hooked=hooked+1 end
+        end
+        controller.castReady=hooked>0
+        controller.castReason=hooked>0 and ("hooked "..hooked.."/"..#matches.." castRay candidates")
+            or "castRay hook was rejected"
+        return controller.castReady,controller.castReason
     end
     controller.remote=remoteEvent
     controller.target=function()
@@ -623,16 +721,29 @@ local function startSilentHook()
     controller.chance=silent.hitChance
     controller.prediction=silent.prediction
     controller.backend=silent.backend
+    local castOk,castReason=installCastHooks()
+    local backendReady=(silent.backend=="castRay only" and castOk)
+        or (silent.backend=="Native ray" and controller.namecallReady)
+        or (silent.backend=="Automatic" and (controller.namecallReady or castOk))
+    if not backendReady then
+        silent.available=false
+        silent.reason="castRay: "..tostring(castReason).."; rays: "..tostring(controller.namecallReason)
+        return false,silent.reason
+    end
     controller.enable(true)
     silent.available=true
-    silent.reason="ready"
-    return true,"ready"
+    if silent.backend=="castRay only" or (silent.backend=="Automatic" and not controller.namecallReady) then
+        silent.reason=castReason
+    else
+        silent.reason=controller.namecallReason
+    end
+    return true,silent.reason
 end
 
 local CombatTab=Window:Tab({Title="Combat",Icon="crosshair"})
 CombatTab:Section("Aim assist", "Client-side aim assistance. Camera tracking never changes shot data.")
-CombatTab:Section("Silent aim 2.1",
-    "Preserves native shooting. Hybrid mode redirects validated rays and supports the current vector-triple shot format.")
+CombatTab:Section("Silent aim 2.2",
+    "Redirects the native weapon ray before the game builds and sends its untouched shot payload.")
 CombatTab:Toggle({Title="Enable silent aim",Flag="pl_combat_silent",Callback=function(value)
     if not value then
         silent.enabled=false
@@ -652,7 +763,7 @@ CombatTab:Toggle({Title="Enable silent aim",Flag="pl_combat_silent",Callback=fun
             Window:Status("Silent aim unavailable: "..tostring(why),"warning")
         end
         task.defer(function()if alive then Window:SetFlag("pl_combat_silent",false)end end)
-    else Window:Status("Silent aim ready. Native shooting state stays untouched.","success")end
+    else Window:Status("Silent aim ready: "..tostring(why),"success")end
 end})
 CombatTab:Slider({Title="Silent hit chance",Min=1,Max=100,Default=95,Suffix="%",
     Flag="pl_combat_hitchance",Callback=function(value)
@@ -666,11 +777,20 @@ CombatTab:Dropdown({Title="Silent target part",
     Default="Adaptive (head/body)",Flag="pl_silent_part",
     Callback=function(v)silent.part=v end})
 CombatTab:Dropdown({Title="Silent aim backend",
-    Options={"Hybrid","Ray redirect","Payload fallback"},Default="Hybrid",
-    Flag="pl_silent_backend",Callback=function(v)
+    Options={"Native ray","Automatic","castRay only"},Default="Native ray",
+    Flag="pl_silent_backend_v2",Callback=function(v)
         silent.backend=v
         local hook=executorEnv.LyraPrisonSilentController
-        if hook and hook.version==5 then hook.backend=v end
+        if hook and hook.version==7 then hook.backend=v end
+        if silent.enabled then
+            local ok,why=startSilentHook()
+            if ok then Window:Status("Silent backend: "..tostring(why),"success")
+            else
+                silent.enabled=false
+                task.defer(function()if alive then Window:SetFlag("pl_combat_silent",false)end end)
+                Window:Status("Backend unavailable: "..tostring(why),"warning")
+            end
+        end
     end})
 CombatTab:Slider({Title="Adaptive headshot chance",Min=0,Max=100,Default=85,Suffix="%",
     Flag="pl_silent_headchance",Callback=function(v)silent.headChance=v end})
@@ -683,7 +803,7 @@ CombatTab:Slider({Title="Movement prediction",Min=0,Max=30,Default=0,Suffix=" / 
     Flag="pl_silent_prediction",Callback=function(v)
         silent.prediction=v/100
         local env=type(getgenv)=="function" and getgenv() or _G
-        if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==5 then
+        if env.LyraPrisonSilentController and env.LyraPrisonSilentController.version==7 then
             env.LyraPrisonSilentController.prediction=silent.prediction
         end
     end})
@@ -698,18 +818,18 @@ CombatTab:Button({Title="Emergency: restore normal shooting",Icon="refresh-cw",
         Window:Notify({Title="Normal shooting",Text="Silent aim disabled. Weapon rays and remotes are untouched.",Kind="success"})
     end})
 CombatTab:Section("Silent aim diagnostics",
-    "Rays confirm native interception. Payload fallback confirms current ShootEvent pellets were adjusted.")
+    "Cast redirects should rise when the native gun ray is replaced. Shots remain the original game remote calls.")
 local shotStatus=CombatTab:Label("Enable silent aim, equip a gun and fire to inspect shot interception.")
 CombatTab:Button({Title="Refresh shot diagnostics",Icon="refresh-cw",Callback=function()
     local env=type(getgenv)=="function" and getgenv() or _G
     local hook=env.LyraPrisonSilentController
-    if not hook or hook.version~=5 then
+    if not hook or hook.version~=7 then
         shotStatus:Set("Hook not installed in this session.")
         return
     end
-    shotStatus:Set("Rays: "..tostring(hook.rays or 0)
-        .." | redirected: "..tostring(hook.redirected or 0)
-        .." | payload: "..tostring(hook.payloadAdjusted or 0)
+    shotStatus:Set("Cast: "..tostring(hook.castCalls or 0)
+        .." | cast redirected: "..tostring(hook.castRedirected or 0)
+        .." | ray redirected: "..tostring(hook.redirected or 0)
         .." | shots: "..tostring(hook.shots or 0)
         .." | method: "..tostring(hook.lastMethod or "none"))
 end})
@@ -721,10 +841,10 @@ Window:Connect(RunService.Heartbeat,function(dt)
     shotStatusElapsed=0
     local env=type(getgenv)=="function" and getgenv() or _G
     local hook=env.LyraPrisonSilentController
-    if hook and hook.version==5 and silent.enabled then
-        shotStatus:Set("Rays: "..tostring(hook.rays or 0)
-            .." | redirected: "..tostring(hook.redirected or 0)
-            .." | payload: "..tostring(hook.payloadAdjusted or 0)
+    if hook and hook.version==7 and silent.enabled then
+        shotStatus:Set("Cast: "..tostring(hook.castCalls or 0)
+            .." | cast redirected: "..tostring(hook.castRedirected or 0)
+            .." | ray redirected: "..tostring(hook.redirected or 0)
             .." | shots: "..tostring(hook.shots or 0)
             .." | target: "..tostring(hook.lastTarget or "-"))
     end
@@ -743,6 +863,8 @@ CombatTab:Toggle({Title="Check walls",Default=true,Flag="pl_combat_walls",
     Callback=function(v)combat.wall=v end})
 CombatTab:Toggle({Title="Ignore teammates",Default=true,Flag="pl_combat_team",
     Callback=function(v)combat.team=v end})
+CombatTab:Toggle({Title="Ignore protected players",Default=true,Flag="pl_combat_forcefield",
+    Description="Skips targets with a spawn ForceField.",Callback=function(v)combat.forcefield=v end})
 CombatTab:Dropdown({Title="Aim body part",Options={"Head","HumanoidRootPart"},Default="Head",
     Flag="pl_combat_part",Callback=function(v)combat.part=v end})
 CombatTab:Slider({Title="Aim radius",Min=40,Max=500,Default=180,Suffix=" px",
@@ -827,6 +949,51 @@ CombatTab:Section("Team filter", "Choose which teams can be targeted.")
 CombatTab:Toggle({Title="Guards",Default=true,Flag="pl_target_guards",Callback=function(v)combat.guards=v end})
 CombatTab:Toggle({Title="Inmates",Default=true,Flag="pl_target_inmates",Callback=function(v)combat.inmates=v end})
 CombatTab:Toggle({Title="Criminals",Default=true,Flag="pl_target_criminals",Callback=function(v)combat.criminals=v end})
+local hitbox={enabled=false,size=4,transparency=0.65,original=setmetatable({}, {__mode="k"})}
+local function restoreHitboxes()
+    for part,old in pairs(hitbox.original)do
+        if part and part.Parent then pcall(function()
+            part.Size=old.Size
+            part.Transparency=old.Transparency
+            part.CanCollide=old.CanCollide
+            part.Material=old.Material
+        end)end
+        hitbox.original[part]=nil
+    end
+end
+local function updateHitboxes()
+    if not hitbox.enabled then restoreHitboxes();return end
+    for _,player in ipairs(Players:GetPlayers())do
+        if legalTarget(player) then
+            local part=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if part then
+                if not hitbox.original[part] then
+                    hitbox.original[part]={Size=part.Size,Transparency=part.Transparency,
+                        CanCollide=part.CanCollide,Material=part.Material}
+                end
+                part.Size=Vector3.new(hitbox.size,hitbox.size,hitbox.size)
+                part.Transparency=hitbox.transparency
+                part.CanCollide=false
+                part.Material=Enum.Material.ForceField
+            end
+        end
+    end
+end
+CombatTab:Section("Target hitbox", "Local target visibility helper with automatic restoration.")
+CombatTab:Toggle({Title="Expand target hitboxes",Flag="pl_hitbox",Callback=function(v)
+    hitbox.enabled=v
+    updateHitboxes()
+end})
+CombatTab:Slider({Title="Hitbox size",Min=2,Max=14,Default=4,Suffix=" studs",
+    Flag="pl_hitbox_size",Callback=function(v)hitbox.size=v;updateHitboxes()end})
+CombatTab:Slider({Title="Hitbox transparency",Min=0,Max=95,Default=65,Suffix="%",
+    Flag="pl_hitbox_transparency",Callback=function(v)hitbox.transparency=v/100;updateHitboxes()end})
+local hitboxClock=0
+Window:Connect(RunService.Heartbeat,function(dt)
+    if not alive or not hitbox.enabled then return end
+    hitboxClock=hitboxClock+dt
+    if hitboxClock>=0.4 then hitboxClock=0;updateHitboxes()end
+end)
 local lastActivation=0
 local aimPartCache=nil
 local aimDistCache=nil
@@ -963,6 +1130,8 @@ end)
 Window:Connect(Players.PlayerRemoving,clearItem)
 cleanup=function()
     silent.enabled=false
+    followPlayer=false
+    restoreHitboxes()
     local shared=type(getgenv)=="function" and getgenv() or _G
     if shared.LyraPrisonSilentController then
         pcall(function()shared.LyraPrisonSilentController.enable(false)end)
@@ -1049,6 +1218,51 @@ local function prepareFly(root)
     gyro.Parent=root
     fly.gyro=gyro
 end
+local float={on=false,height=nil,root=nil,position=nil}
+local function clearFloat()
+    if float.position then float.position:Destroy();float.position=nil end
+    float.root=nil
+end
+local function prepareFloat(root)
+    if float.root==root and float.position then return end
+    clearFloat()
+    float.root=root
+    float.height=root.Position.Y
+    local hold=Instance.new("BodyPosition")
+    hold.Name="LyraFloatPosition"
+    hold.MaxForce=Vector3.new(0,1e7,0)
+    hold.P=7000
+    hold.D=900
+    hold.Position=Vector3.new(root.Position.X,float.height,root.Position.Z)
+    hold.Parent=root
+    float.position=hold
+end
+local vehicleFly={on=false,speed=100,up=false,down=false,part=nil,velocity=nil,gyro=nil}
+local function clearVehicleFly()
+    if vehicleFly.velocity then vehicleFly.velocity:Destroy();vehicleFly.velocity=nil end
+    if vehicleFly.gyro then vehicleFly.gyro:Destroy();vehicleFly.gyro=nil end
+    vehicleFly.part=nil
+end
+local function prepareVehicleFly(part)
+    if vehicleFly.part==part and vehicleFly.velocity and vehicleFly.gyro then return end
+    clearVehicleFly()
+    vehicleFly.part=part
+    local velocity=Instance.new("BodyVelocity")
+    velocity.Name="LyraVehicleVelocity"
+    velocity.MaxForce=Vector3.new(1e9,1e9,1e9)
+    velocity.P=3000
+    velocity.Velocity=Vector3.zero
+    velocity.Parent=part
+    vehicleFly.velocity=velocity
+    local gyro=Instance.new("BodyGyro")
+    gyro.Name="LyraVehicleGyro"
+    gyro.MaxTorque=Vector3.new(1e9,1e9,1e9)
+    gyro.P=9000
+    gyro.D=800
+    gyro.CFrame=part.CFrame
+    gyro.Parent=part
+    vehicleFly.gyro=gyro
+end
 Mov:Section("Fly", "Camera-relative flight with mobile joystick support.")
 Mov:Toggle({Title="Fly",Flag="pl_fly",Callback=function(v)
     fly.on=v
@@ -1058,14 +1272,35 @@ Mov:Slider({Title="Fly speed",Min=15,Max=160,Default=60,Suffix=" studs/s",
     Flag="pl_fly_speed",Callback=function(v)fly.speed=v end})
 Mov:Toggle({Title="Fly ascend",Flag="pl_fly_up",Callback=function(v)fly.up=v end})
 Mov:Toggle({Title="Fly descend",Flag="pl_fly_down",Callback=function(v)fly.down=v end})
+Mov:Section("Float & vehicle", "Stable height hold and seated vehicle flight from the complete utility set.")
+Mov:Toggle({Title="Float at current height",Flag="pl_float",Callback=function(v)
+    float.on=v
+    if not v then clearFloat() end
+end})
+Mov:ButtonRow({
+    {Title="Float +5",Icon="arrow-up",Callback=function()
+        float.height=(float.height or (getRoot() and getRoot().Position.Y) or 0)+5
+    end},
+    {Title="Float -5",Icon="arrow-down",Callback=function()
+        float.height=(float.height or (getRoot() and getRoot().Position.Y) or 0)-5
+    end}
+})
+Mov:Toggle({Title="Vehicle fly",Flag="pl_vehicle_fly",Callback=function(v)
+    vehicleFly.on=v
+    if not v then clearVehicleFly() end
+end})
+Mov:Slider({Title="Vehicle fly speed",Min=25,Max=300,Default=100,Suffix=" studs/s",
+    Flag="pl_vehicle_speed",Callback=function(v)vehicleFly.speed=v end})
+Mov:Toggle({Title="Vehicle ascend",Flag="pl_vehicle_up",Callback=function(v)vehicleFly.up=v end})
+Mov:Toggle({Title="Vehicle descend",Flag="pl_vehicle_down",Callback=function(v)vehicleFly.down=v end})
 Window:Connect(UIS.InputBegan,function(input,processed)
     if processed then return end
-    if input.KeyCode==Enum.KeyCode.Space then fly.up=true end
-    if input.KeyCode==Enum.KeyCode.LeftControl then fly.down=true end
+    if input.KeyCode==Enum.KeyCode.Space then fly.up=true;vehicleFly.up=true end
+    if input.KeyCode==Enum.KeyCode.LeftControl then fly.down=true;vehicleFly.down=true end
 end)
 Window:Connect(UIS.InputEnded,function(input)
-    if input.KeyCode==Enum.KeyCode.Space then fly.up=false end
-    if input.KeyCode==Enum.KeyCode.LeftControl then fly.down=false end
+    if input.KeyCode==Enum.KeyCode.Space then fly.up=false;vehicleFly.up=false end
+    if input.KeyCode==Enum.KeyCode.LeftControl then fly.down=false;vehicleFly.down=false end
 end)
 Window:Connect(RunService.Heartbeat,function()
     if not alive or not fly.on then return end
@@ -1083,6 +1318,35 @@ Window:Connect(RunService.Heartbeat,function()
         if look.Magnitude>0.05 then fly.gyro.CFrame=CFrame.lookAt(root.Position,root.Position+look)end
     end
     hum.PlatformStand=false
+end)
+Window:Connect(RunService.Heartbeat,function()
+    if not alive then return end
+    local char=LocalPlayer.Character
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    local root=char and char:FindFirstChild("HumanoidRootPart")
+    if float.on then
+        if not root or not hum or hum.Health<=0 then clearFloat()
+        else
+            prepareFloat(root)
+            float.position.Position=Vector3.new(root.Position.X,float.height or root.Position.Y,root.Position.Z)
+        end
+    end
+    if vehicleFly.on then
+        local seat=hum and hum.SeatPart
+        local part=seat and (seat.AssemblyRootPart or seat)
+        if not part then clearVehicleFly();return end
+        prepareVehicleFly(part)
+        local direction=hum.MoveDirection
+        local rise=(vehicleFly.up and 1 or 0)-(vehicleFly.down and 1 or 0)
+        vehicleFly.velocity.Velocity=direction*vehicleFly.speed+Vector3.new(0,rise*vehicleFly.speed,0)
+        local cam=workspace.CurrentCamera
+        if cam then
+            local look=Vector3.new(cam.CFrame.LookVector.X,0,cam.CFrame.LookVector.Z)
+            if look.Magnitude>0.05 then
+                vehicleFly.gyro.CFrame=CFrame.lookAt(part.Position,part.Position+look)
+            end
+        end
+    end
 end)
 
 local lastSafe,moveClock= nil,0
@@ -1135,6 +1399,8 @@ Window:Connect(RunService.Heartbeat,function(dt)
 end)
 Window:Connect(LocalPlayer.CharacterAdded,function()
     restoreCollision()
+    clearFloat()
+    clearVehicleFly()
     lastSafe=nil
 end)
 
@@ -1160,6 +1426,24 @@ Map:ButtonRow({
         else teleport(Vector3.new(-920,100,2138))end
     end},
 })
+Map:Button({Title="Teleport to aim point",Icon="mouse-pointer-2",
+    Description="Uses the mouse on PC and the screen center on mobile.",Callback=function()
+        local cameraNow=workspace.CurrentCamera
+        local root=getRoot()
+        if not cameraNow or not root then Window:Status("Camera or character unavailable","warning");return end
+        local screen=pointer()
+        local ray=cameraNow:ViewportPointToRay(screen.X,screen.Y)
+        local params=RaycastParams.new()
+        params.FilterType=Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances=LocalPlayer.Character and {LocalPlayer.Character} or {}
+        params.IgnoreWater=true
+        local result=workspace:Raycast(ray.Origin,ray.Direction*2500,params)
+        if result then
+            last.position=root.CFrame
+            root.CFrame=CFrame.new(result.Position+Vector3.new(0,3.5,0))
+            Window:Status("Teleported to the aimed surface","success")
+        else Window:Status("No surface found at the aim point","warning")end
+    end})
 
 local TeamTools=Window:Tab({Title="Teams & Gear",Icon="shield"})
 TeamTools:Section("Teams","Server decides whether a team change is accepted. Criminals must cross their spawn.")
@@ -1179,6 +1463,31 @@ local function requestTeam(color)
         Text=ok and ("Requested "..color.."; server may refuse.") or tostring(err),
         Kind=ok and "info" or "warning"})
 end
+local function becomeCriminalAndReturn()
+    task.spawn(function()
+        local root=getRoot()
+        local cameraNow=workspace.CurrentCamera
+        if not root then Window:Status("Character unavailable","warning");return end
+        local savedCFrame=root.CFrame
+        local savedCamera=cameraNow and cameraNow.CFrame
+        root.CFrame=CFrame.new(-975,108,2071)
+        local deadline=os.clock()+8
+        local success=false
+        while alive and os.clock()<deadline do
+            local char=LocalPlayer.Character
+            if LocalPlayer.Team and LocalPlayer.Team.Name:lower():find("criminal")
+                and char and not char:FindFirstChildOfClass("ForceField") then
+                success=true;break
+            end
+            task.wait(0.12)
+        end
+        local latest=getRoot()
+        if latest then latest.CFrame=savedCFrame end
+        if cameraNow and savedCamera then cameraNow.CFrame=savedCamera end
+        Window:Status(success and "Criminal team confirmed; position restored"
+            or "Criminal switch timed out; position restored",success and "success" or "warning")
+    end)
+end
 TeamTools:ButtonRow({
     {Title="Guards",Icon="shield",Callback=function()requestTeam("Bright blue")end},
     {Title="Inmates",Icon="users",Callback=function()requestTeam("Bright orange")end},
@@ -1188,6 +1497,9 @@ TeamTools:Button({Title="Criminal spawn",Icon="navigation",
     Callback=function()
         teleport(Vector3.new(-920,100,2138))
     end})
+TeamTools:Button({Title="Become Criminal and return",Icon="rotate-ccw",
+    Description="Touches the criminal area, waits up to 8 seconds and restores your position.",
+    Callback=becomeCriminalAndReturn})
 local weaponChoices={"M9","Remington 870","AK-47","MP5","M4A1","Taser",
     "FAL","M700","Revolver","C4 Explosive","Riot Shield","Lunch","Hammer","Crude Knife"}
 local selectedWeapon="M9"
@@ -1760,6 +2072,8 @@ local baseCleanup=cleanup
 cleanup=function()
     restoreCollision()
     clearFly()
+    clearFloat()
+    clearVehicleFly()
     pcall(restoreAllGunTuning)
     local model=LocalPlayer.Character
     local hum=model and model:FindFirstChildOfClass("Humanoid")
@@ -2388,8 +2702,8 @@ Mov:Button({Title="Stop flight immediately",Icon="power",Callback=function()
     Window:SetFlag("pl_fly",false)
 end})
 
-Window:Notify({Title="Lyra Prison Life v2.1.0",
-    Text="Stable shooting, hybrid silent aim, safe infinite ammo, tuning, ESP and radar loaded.",
+Window:Notify({Title="Lyra Prison Life v2.2.0",
+    Text="Native ray silent aim, remembered UI state, expanded movement, target and navigation tools loaded.",
     Kind="success"})
 return Window
 

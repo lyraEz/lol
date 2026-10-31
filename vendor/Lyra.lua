@@ -40,6 +40,7 @@ local Shared = type(getgenv) == "function" and getgenv() or _G
 if type(Shared.LyraUI) ~= "table" then Shared.LyraUI = {} end
 local Registry = Shared.LyraUI
 Registry.Windows = Registry.Windows or {}
+Registry.ViewMemory = Registry.ViewMemory or {}
 
 -- Lets public functions be called with a dot or a colon: Lyra.AddTheme(...) and Lyra:AddTheme(...).
 local function args(first, ...)
@@ -820,10 +821,20 @@ function Lyra.CreateWindow(...)
     self.Title = tostring(options.Title or "Lyra UI")
     self.Subtitle = tostring(options.Subtitle or ("Lyra UI  ·  v" .. Lyra.Version))
     self.Name = tostring(options.Name or self.Title)
+    local previous = Registry.Windows[self.Name]
+    if type(previous) == "table" and previous ~= self and type(previous.Destroy) == "function" then pcall(previous.Destroy, previous) end
     self.Alive = true
     self.Connections, self.Tweens, self.Painted, self.PaintCount, self.PruneAt = {}, {}, {}, 0, 600
     self.ThemeHooks, self.LayoutHooks, self.Tabs, self.Flags, self.FlagObjects, self.Keybinds, self.Commands = {}, {}, {}, {}, {}, {}, {}
     self.ChatInstances, self.SettingControls = {}, {}
+    self.TabScroll = {}
+    self.ViewMemory = Registry.ViewMemory[self.Name]
+    self.PendingTabTitle = self.ViewMemory and self.ViewMemory.Tab or nil
+    if self.ViewMemory and type(self.ViewMemory.Scroll) == "table" then
+        for title, y in pairs(self.ViewMemory.Scroll) do
+            if type(title) == "string" and type(y) == "number" then self.TabScroll[title] = math.max(0, y) end
+        end
+    end
     self.Visible, self.Minimized, self.Maximized, self.Drawer = true, false, false, false
     local size = options.Size
     if typeof(size) == "Vector2" then self.DefaultW, self.DefaultH = size.X, size.Y
@@ -831,8 +842,6 @@ function Lyra.CreateWindow(...)
     elseif type(size) == "table" then self.DefaultW, self.DefaultH = size.Width or size.W or size[1], size.Height or size.H or size[2] end
     self.DefaultW = math.clamp(tonumber(self.DefaultW) or 820, 300, 4000)
     self.DefaultH = math.clamp(tonumber(self.DefaultH) or 600, 240, 4000)
-    local previous = Registry.Windows[self.Name]
-    if type(previous) == "table" and previous ~= self and type(previous.Destroy) == "function" then pcall(previous.Destroy, previous) end
     Registry.Windows[self.Name] = self
     self:_loadConfig()
     local saved = self.Settings.Theme
@@ -1585,7 +1594,12 @@ function Window:_hiddenHint()
     end
 end
 function Window:Hide() self:SetVisible(false); self:_hiddenHint() end
-function Window:Show() self.Minimized = false; self:SetVisible(true); self:_layout(false) end
+function Window:Show()
+    self.Minimized = false
+    self:SetVisible(true)
+    self:_layout(false)
+    self:_restoreCurrentScroll()
+end
 function Window:Toggle() if self.Visible then self:SetVisible(false) else self:Show() end end
 function Window:Minimize(state) self.Minimized = state ~= false; self:_layout(false) end
 function Window:Maximize(state) self.Maximized = state ~= false; self:_layout(true) end
@@ -1642,6 +1656,7 @@ function Window:SetVisible(value)
     value = value ~= false
     -- Opening an open window or closing a closed one does nothing, so a second call never strands the badge.
     if value == self.Visible or not self.Alive then return end
+    if not value then self:_rememberView() end
     self.VisibilityGeneration = (self.VisibilityGeneration or 0) + 1
     local generation = self.VisibilityGeneration
     if self.Badge then self.Badge.Visible = false end
@@ -1691,6 +1706,7 @@ function Window:SetVisible(value)
         else
             self:_effects()
         end
+        self:_restoreCurrentScroll()
         return
     end
     if not self.Main.Visible then self:_effects(); return end
@@ -2011,7 +2027,12 @@ function Window:Tab(spec, icon)
     padding(page, 2, 6, 10, 2)
     list(page, spec.Gap or 8)
     -- An open dropdown list would drift away from its button, so scrolling closes it.
-    self:_on(page:GetPropertyChangedSignal("CanvasPosition"), function() if self.OpenDrop then self:_closeDropdown() end end)
+    self:_on(page:GetPropertyChangedSignal("CanvasPosition"), function()
+        if self.OpenDrop then self:_closeDropdown() end
+        if self.Visible and page.Visible and not self.RestoringScroll then
+            self.TabScroll[title] = math.max(0, page.CanvasPosition.Y)
+        end
+    end)
     local tab = newContainer(self, page, page)
     tab.Title, tab.Icon, tab.OnSelect = title, spec.Icon or "box", spec.OnSelect
     local index = #self.Tabs + 1
@@ -2033,6 +2054,10 @@ function Window:Tab(spec, icon)
     self:_on(button.MouseLeave, function() if self.CurrentTab ~= tab then self:_tween(button, {BackgroundTransparency = 1}) end end)
     table.insert(self.Tabs, tab)
     if not self.CurrentTab then self:SelectTab(tab) end
+    if self.PendingTabTitle == title then
+        self.PendingTabTitle = nil
+        self:SelectTab(tab)
+    end
     self:_layout(false)
     return tab
 end
@@ -2042,6 +2067,9 @@ function Window:SelectTab(target)
         for _, item in ipairs(self.Tabs) do if item.Title == target then tab = item end end
     end
     if type(tab) ~= "table" or not tab.Page then return end
+    if self.CurrentTab and self.CurrentTab.Page then
+        self.TabScroll[self.CurrentTab.Title] = math.max(0, self.CurrentTab.Page.CanvasPosition.Y)
+    end
     self.CurrentTab = tab
     self:_closeDropdown(true)
     if self.Drawer then self.Drawer = false; self:_layout(false) end
@@ -2054,7 +2082,29 @@ function Window:SelectTab(target)
     end
     self.Content.GroupTransparency = self.Settings.ReducedMotion and 0 or 0.25
     self:_tween(self.Content, {GroupTransparency = 0}, 0.22, nil, nil, "fade")
+    self:_restoreCurrentScroll()
     self:_fire(tab.OnSelect, tab)
+end
+function Window:_rememberView()
+    if self.CurrentTab and self.CurrentTab.Page then
+        self.TabScroll[self.CurrentTab.Title] = math.max(0, self.CurrentTab.Page.CanvasPosition.Y)
+    end
+    local snapshot = {Tab = self.CurrentTab and self.CurrentTab.Title or nil, Scroll = {}}
+    for title, y in pairs(self.TabScroll or {}) do snapshot.Scroll[title] = math.max(0, tonumber(y) or 0) end
+    Registry.ViewMemory[self.Name] = snapshot
+    self.ViewMemory = snapshot
+end
+function Window:_restoreCurrentScroll()
+    local tab = self.CurrentTab
+    if not tab or not tab.Page then return end
+    local y = math.max(0, tonumber(self.TabScroll[tab.Title]) or 0)
+    local generation = self.VisibilityGeneration
+    task.defer(function()
+        if not self.Alive or self.CurrentTab ~= tab or generation ~= self.VisibilityGeneration then return end
+        self.RestoringScroll = true
+        tab.Page.CanvasPosition = Vector2.new(0, y)
+        self.RestoringScroll = false
+    end)
 end
 function Window:SetTitle(title, subtitle)
     if title then self.Title = tostring(title); self.HeaderTitle.Text = self.Title end
@@ -2081,6 +2131,7 @@ function Window:_syncSetting(key)
 end
 function Window:Destroy()
     if not self.Alive then return end
+    self:_rememberView()
     if self.SavePending then pcall(self.Save, self) end
     self.Alive = false
     for _, connection in ipairs(self.Connections) do pcall(function() connection:Disconnect() end) end
